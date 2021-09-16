@@ -302,45 +302,14 @@ func TestGRPCBackend(t *testing.T) {
 		_ = s.Serve(lis)
 	}()
 
-	config := fmt.Sprintf(`
-listenAddress: 127.0.0.1:0
-
-logging:
-  level: info
-
-metrics:
-  scope:
-    prefix: "coordinator"
-  prometheus:
-    handlerPath: /metrics
-    listenAddress: "127.0.0.1:0"
-    onError: stderr
-  sanitization: prometheus
-  samplingRate: 1.0
-
+	backendConfig := fmt.Sprintf(`
 rpc:
   remoteListenAddresses: ["%s"]
 
 backend: grpc
-
-tagOptions:
-  metricName: "bar"
-  idScheme: prepend_meta
-
-readWorkerPoolPolicy:
-  grow: true
-  size: 100
-  shards: 1000
-  killProbability: 0.3
-
-writeWorkerPoolPolicy:
-  grow: true
-  size: 100
-  shards: 1000
-  killProbability: 0.3
 `, lis.Addr().String())
 
-	testBackend(t, config, func(address string) *http.Request {
+	testBackend(t, backendConfig, func(address string) *http.Request {
 		// Send Prometheus read request
 		promReq := test.GeneratePromReadRequest()
 		promReqBody := test.GeneratePromReadRequestBody(t, promReq)
@@ -361,33 +330,15 @@ func TestPromRemoteBackend(t *testing.T) {
 	externalFakePromServer, closeFn := promremotetest.NewServer(t)
 	defer closeFn()
 
-	configYAML := fmt.Sprintf(`
-listenAddress: 127.0.0.1:0
-
-logging:
-  level: info
-
-metrics:
-  scope:
-    prefix: "coordinator"
-  prometheus:
-    handlerPath: /metrics
-    listenAddress: "127.0.0.1:0"
-    onError: stderr
-  sanitization: prometheus
-  samplingRate: 1.0
-
+	backendConfig := fmt.Sprintf(`
 prometheusRemoteBackend:
   endpoints: 
   - address: "%s"
 
 backend: prom-remote
-
-tagOptions:
-  allowTagNameDuplicates: true
 `, externalFakePromServer.HTTPAddr())
 
-	testBackend(t, configYAML, func(address string) *http.Request {
+	testBackend(t, backendConfig, func(address string) *http.Request {
 		promReq := test.GeneratePromWriteRequest()
 		promReqBody := test.GeneratePromWriteRequestBody(t, promReq)
 		req, err := http.NewRequestWithContext(
@@ -665,11 +616,30 @@ func waitForServerHealthy(t *testing.T, addr string) {
 		maxWait.String())
 }
 
-func testBackend(t *testing.T, configFileContents string, reqFn func(address string) *http.Request) {
+func testBackend(t *testing.T, backendConfig string, reqFn func(address string) *http.Request) {
 	ctrl := gomock.NewController(xtest.Reporter{T: t})
 	defer ctrl.Finish()
 
-	configFile, closeFn := newTestFile(t, "config_backend.yaml", configFileContents)
+	configYAML := fmt.Sprintf(`
+listenAddress: 127.0.0.1:0
+logging:
+  level: info
+metrics:
+  scope:
+    prefix: "coordinator"
+  prometheus:
+    handlerPath: /metrics
+    listenAddress: "127.0.0.1:0"
+    onError: stderr
+  sanitization: prometheus
+  samplingRate: 1.0
+tagOptions:
+  allowTagNameDuplicates: true
+
+%s
+`, backendConfig)
+
+	configFile, closeFn := newTestFile(t, "config_backend.yaml", configYAML)
 	defer closeFn()
 
 	var cfg config.Configuration
