@@ -26,7 +26,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime/debug"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/m3db/m3/src/dbnode/digest"
 	"github.com/m3db/m3/src/dbnode/generated/proto/index"
@@ -151,6 +154,7 @@ func (w *indexWriter) Open(opts IndexWriterOpenOptions) error {
 			w.checkpointFilePath)
 	}
 
+	w.printStackTrace("opening index writer")
 	// NB: Write out an incomplete index info file when we start writing a volume,
 	// this is later used in the cleanup of corrupted/incomplete index filesets.
 	infoFileData, err := w.infoFileData()
@@ -301,6 +305,8 @@ func (w *indexWriter) Close() error {
 		return w.err
 	}
 
+	w.printStackTrace("closing index writer")
+
 	// Write info file
 	infoFileData, err := w.infoFileData()
 	if err != nil {
@@ -332,4 +338,15 @@ func (w *indexWriter) writeInfoFile(infoFileData []byte) error {
 	// all the other files. To avoid cases where writes could be observed in a different order,
 	// info files are being fsync'ed immediately after being written.
 	return xos.WriteFileSync(w.infoFilePath, infoFileData, w.newFileMode)
+}
+
+func (w *indexWriter) printStackTrace(msg string) {
+	w.opts.InstrumentOptions().Logger().Info(msg,
+		zap.String("namespaceDir", w.namespaceDir),
+		zap.String("fileSetType", w.fileSetType.String()),
+		zap.Time("blockStart", w.start.ToTime()),
+		zap.Int("volumeIndex", w.volumeIndex),
+		zap.String("volumeType", string(w.indexVolumeType)),
+	)
+	debug.PrintStack()
 }
