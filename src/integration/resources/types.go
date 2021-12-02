@@ -23,6 +23,9 @@
 package resources
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,6 +33,7 @@ import (
 
 	"github.com/m3db/m3/src/aggregator/aggregator"
 	"github.com/m3db/m3/src/dbnode/generated/thrift/rpc"
+	"github.com/m3db/m3/src/query/api/v1/options"
 	"github.com/m3db/m3/src/query/generated/proto/admin"
 	"github.com/m3db/m3/src/query/generated/proto/prompb"
 	"github.com/m3db/m3/src/x/errors"
@@ -40,6 +44,9 @@ type ResponseVerifier func(int, map[string][]string, string, error) error
 
 // GoalStateVerifier verifies that the given results are valid.
 type GoalStateVerifier func(string, error) error
+
+// Headers represents http headers.
+type Headers map[string][]string
 
 // Coordinator is a wrapper for a coordinator. It provides a wrapper on HTTP
 // endpoints that expose cluster management APIs as well as read and write
@@ -54,14 +61,31 @@ type Coordinator interface {
 	ApplyKVUpdate(update string) error
 	// WriteCarbon writes a carbon metric datapoint at a given time.
 	WriteCarbon(port int, metric string, v float64, t time.Time) error
-	// WriteProm writes a prometheus metric.
-	WriteProm(name string, tags map[string]string, samples []prompb.Sample) error
+	// WriteProm writes a prometheus metric. Takes tags/labels as a map for convenience.
+	WriteProm(name string, tags map[string]string, samples []prompb.Sample, headers Headers) error
+	// WritePromWithLabels writes a prometheus metric. Allows you to provide the labels for
+	// the write directly instead of conveniently converting them from a map.
+	WritePromWithLabels(name string, labels []prompb.Label, samples []prompb.Sample, headers Headers) error
 	// RunQuery runs the given query with a given verification function.
-	RunQuery(verifier ResponseVerifier, query string, headers map[string][]string) error
+	RunQuery(verifier ResponseVerifier, query string, headers Headers) error
 	// InstantQuery runs an instant query with provided headers
-	InstantQuery(req QueryRequest, headers map[string][]string) (model.Vector, error)
+	InstantQuery(req QueryRequest, headers Headers) (model.Vector, error)
+	// InstantQueryWithEngine runs an instant query with provided headers and the specified
+	// query engine.
+	InstantQueryWithEngine(req QueryRequest, engine options.QueryEngine, headers Headers) (model.Vector, error)
 	// RangeQuery runs a range query with provided headers
-	RangeQuery(req RangeQueryRequest, headers map[string][]string) (model.Matrix, error)
+	RangeQuery(req RangeQueryRequest, headers Headers) (model.Matrix, error)
+	// GraphiteQuery retrieves graphite raw data.
+	GraphiteQuery(GraphiteQueryRequest) ([]Datapoint, error)
+	// RangeQueryWithEngine runs a range query with provided headers and the specified
+	// query engine.
+	RangeQueryWithEngine(req RangeQueryRequest, engine options.QueryEngine, headers Headers) (model.Matrix, error)
+	// LabelNames return matching label names based on the request.
+	LabelNames(req LabelNamesRequest, headers Headers) (model.LabelNames, error)
+	// LabelValues returns matching label values based on the request.
+	LabelValues(req LabelValuesRequest, headers Headers) (model.LabelValues, error)
+	// Series returns matching series based on the request.
+	Series(req SeriesRequest, headers Headers) ([]model.Metric, error)
 }
 
 // Admin is a wrapper for admin functions.
@@ -262,20 +286,87 @@ func (a Aggregators) WaitForHealthy() error {
 
 // QueryRequest represents an instant query request
 type QueryRequest struct {
-	// QueryExpr is the Prometheus expression query string.
-	QueryExpr string
+	// Query is the Prometheus expression query string.
+	Query string
 	// Time is the evaluation timestamp. It is optional.
 	Time *time.Time
 }
 
 // RangeQueryRequest represents a range query request
 type RangeQueryRequest struct {
-	// QueryExpr is the Prometheus expression query string.
-	QueryExpr string
-	// StartTime is the start timestamp of the query range. The default value is time.Now().
-	StartTime time.Time
-	// EndTime is the end timestamp of the query range. The default value is time.Now().
-	EndTime time.Time
+	// Query is the Prometheus expression query string.
+	Query string
+	// Start is the start timestamp of the query range. The default value is time.Now().
+	Start time.Time
+	// End is the end timestamp of the query range. The default value is time.Now().
+	End time.Time
 	// Step is the query resolution step width. It is default to 15 seconds.
 	Step time.Duration
+}
+
+// MetadataRequest contains the parameters for making API requests related to metadata.
+type MetadataRequest struct {
+	// Start is the start timestamp of labels to include.
+	Start time.Time
+	// End is the end timestamp of labels to include.
+	End time.Time
+	// Match is the series selector that selects series to read label names from.
+	Match string
+}
+
+// LabelNamesRequest contains the parameters for making label names API calls.
+type LabelNamesRequest struct {
+	MetadataRequest
+}
+
+// LabelValuesRequest contains the parameters for making label values API calls.
+type LabelValuesRequest struct {
+	MetadataRequest
+
+	// LabelName is the name of the label to retrieve values for.
+	LabelName string
+}
+
+// SeriesRequest contains the parameters for making series API calls.
+type SeriesRequest struct {
+	MetadataRequest
+}
+
+func (m *MetadataRequest) String() string {
+	var (
+		start string
+		end   string
+		parts []string
+	)
+	if !m.Start.IsZero() {
+		start = strconv.Itoa(int(m.Start.Unix()))
+		parts = append(parts, fmt.Sprintf("start=%v", start))
+	}
+	if !m.End.IsZero() {
+		end = strconv.Itoa(int(m.End.Unix()))
+		parts = append(parts, fmt.Sprintf("end=%v", end))
+	}
+	if m.Match != "" {
+		parts = append(parts, fmt.Sprintf("match[]=%v", m.Match))
+	}
+
+	return strings.Join(parts, "&")
+}
+
+// GraphiteQueryRequest represents a graphite render query request.
+type GraphiteQueryRequest struct {
+	// Target speicifies a path identifying one or several metrics.
+	Target string
+	// From is the beginning of the time period to query.
+	From time.Time
+	// Until is the end of the time period to query.
+	Until time.Time
+}
+
+// Datapoint is a data point returned by the graphite render query.
+type Datapoint struct {
+	// Value is the value of the datapoint.
+	Value *float64
+	// Timestamp is the timestamp (in seconds) of the datapoint.
+	Timestamp int64
 }

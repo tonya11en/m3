@@ -288,14 +288,14 @@ func testAggMetrics(t *testing.T, coord resources.Coordinator) {
 		expectedValue = model.SampleValue(6)
 	)
 	assert.NoError(t, resources.Retry(func() error {
-		return coord.WriteProm("cpu", map[string]string{"host": "host1"}, samples)
+		return coord.WriteProm("cpu", map[string]string{"host": "host1"}, samples, nil)
 	}))
 
-	queryHeaders := map[string][]string{"M3-Metrics-Type": {"aggregated"}, "M3-Storage-Policy": {"10s:6h"}}
+	queryHeaders := resources.Headers{"M3-Metrics-Type": {"aggregated"}, "M3-Storage-Policy": {"5s:6h"}}
 
 	// Instant Query
 	require.NoError(t, resources.Retry(func() error {
-		result, err := coord.InstantQuery(resources.QueryRequest{QueryExpr: "cpu"}, queryHeaders)
+		result, err := coord.InstantQuery(resources.QueryRequest{Query: "cpu"}, queryHeaders)
 		if err != nil {
 			return err
 		}
@@ -312,10 +312,10 @@ func testAggMetrics(t *testing.T, coord resources.Coordinator) {
 	require.NoError(t, resources.Retry(func() error {
 		result, err := coord.RangeQuery(
 			resources.RangeQueryRequest{
-				QueryExpr: "cpu",
-				StartTime: time.Now().Add(-30 * time.Second),
-				EndTime:   time.Now(),
-				Step:      1 * time.Second,
+				Query: "cpu",
+				Start: time.Now().Add(-30 * time.Second),
+				End:   time.Now(),
+				Step:  1 * time.Second,
 			},
 			queryHeaders,
 		)
@@ -339,15 +339,7 @@ const defaultAggregatorConfig = `{}`
 
 const aggregatorCoordConfig = `
 clusters:
-  - namespaces:
-      - namespace: default
-        type: unaggregated
-        retention: 1h
-      - namespace: aggregated
-        type: aggregated
-        resolution: 10s
-        retention: 6h
-    client:
+  - client:
       config:
         service:
           env: default_env
@@ -364,7 +356,7 @@ downsample:
         filter: "host:*"
         aggregations: ["Sum"]
         storagePolicies:
-          - resolution: 10s
+          - resolution: 5s
             retention: 6h
 ingest:
   ingester:

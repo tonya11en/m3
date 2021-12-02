@@ -1073,6 +1073,110 @@ func TestAddUntimed_ResendEnabled(t *testing.T) {
 	require.True(t, ok)
 }
 
+func TestAddUntimed_ResendEnabledMigrationRace(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	e, _, _ := testEntry(ctrl, testEntryOptions{})
+	metadatas := metadata.StagedMetadatas{
+		{
+			Metadata: metadata.Metadata{
+				Pipelines: []metadata.PipelineMetadata{
+					{
+						AggregationID: aggregation.MustCompressTypes(aggregation.Sum),
+						ResendEnabled: false,
+						StoragePolicies: policy.StoragePolicies{
+							testStoragePolicy,
+						},
+					},
+				},
+			},
+		},
+	}
+	resolution := testStoragePolicy.Resolution().Window
+	mu := testGauge
+
+	// add value with resendEnable=false
+	require.NoError(t, e.addUntimed(mu, metadatas))
+	require.Len(t, e.aggregations, 1)
+	require.False(t, e.aggregations[0].resendEnabled)
+	elem := e.aggregations[0].elem.Value.(*GaugeElem)
+	vals := elem.values
+	require.Len(t, vals, 1)
+	t1 := xtime.ToUnixNano(e.nowFn().Truncate(resolution))
+	_, ok := vals[t1]
+	require.True(t, ok)
+
+	// consume the aggregation so it's closed
+	t2 := t1.Add(resolution)
+	require.False(t, consume(elem, t2))
+	require.True(t, vals[t1].lockedAgg.closed)
+
+	// add value with resendEnabled=true that targets the closed aggregation. it will automatically roll forward.
+	metadatas[0].Metadata.Pipelines[0].ResendEnabled = true
+	mu.ClientTimeNanos = t1
+	require.NoError(t, e.addUntimed(mu, metadatas))
+	require.Len(t, vals, 2)
+	_, ok = vals[t2]
+	require.True(t, ok)
+}
+
+func TestAddUntimed_ResendEnabledMigrationRaceWithFlusher(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	e, _, _ := testEntry(ctrl, testEntryOptions{})
+	metadatas := metadata.StagedMetadatas{
+		{
+			Metadata: metadata.Metadata{
+				Pipelines: []metadata.PipelineMetadata{
+					{
+						AggregationID: aggregation.MustCompressTypes(aggregation.Sum),
+						ResendEnabled: false,
+						StoragePolicies: policy.StoragePolicies{
+							testStoragePolicy,
+						},
+					},
+				},
+			},
+		},
+	}
+	resolution := testStoragePolicy.Resolution().Window
+	mu := testGauge
+
+	// add value with resendEnable=false
+	require.NoError(t, e.addUntimed(mu, metadatas))
+	require.Len(t, e.aggregations, 1)
+	require.False(t, e.aggregations[0].resendEnabled)
+	elem := e.aggregations[0].elem.Value.(*GaugeElem)
+	vals := elem.values
+	require.Len(t, vals, 1)
+	t1 := xtime.ToUnixNano(e.nowFn().Truncate(resolution))
+	_, ok := vals[t1]
+	require.True(t, ok)
+
+	t2 := t1.Add(resolution)
+	// partially consume the aggregation
+	elem.dirtyToConsumeWithLock(int64(t2), resolution, isStandardMetricEarlierThan)
+
+	// add value with resendEnabled=true that targets the aggregation being flushed
+	metadatas[0].Metadata.Pipelines[0].ResendEnabled = true
+	mu.ClientTimeNanos = t1
+	require.NoError(t, e.addUntimed(mu, metadatas))
+
+	// continue consuming the aggregation
+	elem.expireValuesWithLock(int64(t2), isStandardMetricEarlierThan, flushMetrics{})
+
+	// target the aggregation being flushed again...it should still be open since it migrated to resendEnabled before
+	// closing.
+	require.NoError(t, e.addUntimed(mu, metadatas))
+
+	require.Len(t, vals, 1)
+	v, ok := vals[t1]
+	require.True(t, ok)
+	require.False(t, v.lockedAgg.closed)
+}
+
 func TestAddUntimed_ClosedAggregation(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -1946,11 +2050,12 @@ func TestEntryMaybeExpireWithExpiry(t *testing.T) {
 	}
 
 	// Try expiring this entry and assert it's not expired.
-	require.False(t, e.TryExpire(*now))
+	require.False(t, e.TryExpire(*now, unknownMetricCategory))
 
 	// Try expiring the entry with time in the future and
 	// assert it's expired.
-	require.True(t, e.TryExpire(now.Add(e.opts.EntryTTL()).Add(time.Second)))
+	require.True(t, e.TryExpire(now.Add(e.opts.EntryTTL()).Add(time.Second),
+		unknownMetricCategory))
 
 	// Assert elements have been tombstoned
 	require.Equal(t, 0, len(e.aggregations))
@@ -2275,9 +2380,11 @@ func aggregationKeys(pipelines []metadata.PipelineMetadata) []aggregationKey {
 	return aggregationKeys[:curr]
 }
 
-type testPreProcessFn func(e *Entry, now *time.Time)
-type testElemValidateFn func(t *testing.T, elem *list.Element, alignedStart time.Time)
-type testPostProcessFn func(t *testing.T)
+type (
+	testPreProcessFn   func(e *Entry, now *time.Time)
+	testElemValidateFn func(t *testing.T, elem *list.Element, alignedStart time.Time)
+	testPostProcessFn  func(t *testing.T)
+)
 
 type testEntryData struct {
 	mu unaggregated.MetricUnion

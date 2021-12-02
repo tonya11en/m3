@@ -1,6 +1,4 @@
-// +build dtest
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,35 +18,5 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package integration
-
-import (
-	"fmt"
-	"os"
-	"testing"
-
-	"github.com/m3db/m3/src/integration/resources"
-	"github.com/m3db/m3/src/integration/resources/docker"
-)
-
-var singleDBNodeDockerResources resources.M3Resources
-
-func TestMain(m *testing.M) {
-	var err error
-	singleDBNodeDockerResources, err = docker.SetupSingleM3DBNode(
-		docker.WithExistingCluster("dbnode01", "coord01"),
-	)
-
-	if err != nil {
-		fmt.Println("could not set up db docker containers", err)
-		os.Exit(1)
-	}
-
-	if l := len(singleDBNodeDockerResources.Nodes()); l != 1 {
-		fmt.Println("should only have a single node, have", l)
-		os.Exit(1)
-	}
-
-	code := m.Run()
-	os.Exit(code)
-}
+// Package promqlengine contains utilities for PromQL engine.
+package promqlengine
