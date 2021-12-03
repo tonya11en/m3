@@ -103,7 +103,7 @@ func (s *m3storage) QueryStorageMetadataAttributes(
 
 	results := make([]storagemetadata.Attributes, 0, len(namespaces))
 	for _, ns := range namespaces {
-		results = append(results, ns.Options().Attributes())
+		results = append(results, ns.clusterNamespace.Options().Attributes())
 	}
 	return results, nil
 }
@@ -334,15 +334,19 @@ func (s *m3storage) fetchCompressed(
 				continue
 			}
 
-			debugLog.Write(zap.String("query", query.Raw),
+			ns := n.clusterNamespace
+			debugLog.Write(
+				zap.String("query", query.Raw),
 				zap.String("m3query", m3query.String()),
 				zap.Time("start", queryStart.ToTime()),
+				zap.Time("startNarrowing", n.startNarrowing.ToTime()),
 				zap.Time("end", queryEnd.ToTime()),
+				zap.Time("endNarrowing", n.endNarrowing.ToTime()),
 				zap.String("fanoutType", fanout.String()),
-				zap.String("namespace", n.NamespaceID().String()),
-				zap.String("type", n.Options().Attributes().MetricsType.String()),
-				zap.String("retention", n.Options().Attributes().Retention.String()),
-				zap.String("resolution", n.Options().Attributes().Resolution.String()),
+				zap.String("namespace", ns.NamespaceID().String()),
+				zap.String("type", ns.Options().Attributes().MetricsType.String()),
+				zap.String("retention", ns.Options().Attributes().Retention.String()),
+				zap.String("resolution", ns.Options().Attributes().Resolution.String()),
 				zap.Bool("remote", options.Remote))
 		}
 	}
@@ -352,7 +356,7 @@ func (s *m3storage) fetchCompressed(
 		return nil, index.Query{}, errNoNamespacesConfigured
 	}
 
-	pools, err := namespaces[0].Session().IteratorPools()
+	pools, err := namespaces[0].clusterNamespace.Session().IteratorPools()
 	if err != nil {
 		return nil, index.Query{}, fmt.Errorf("unable to retrieve iterator pools: %v", err)
 	}
@@ -368,7 +372,9 @@ func (s *m3storage) fetchCompressed(
 	}
 	result := consolidators.NewMultiFetchResult(fanout, pools, matchOpts, tagOpts, limitOpts)
 	for _, namespace := range namespaces {
-		namespace := namespace // Capture var
+		narrowedQueryOpts := narrowQueryOpts(queryOptions, namespace)
+		namespace := namespace.clusterNamespace // Capture var
+
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -378,7 +384,7 @@ func (s *m3storage) fetchCompressed(
 
 			session := namespace.Session()
 			namespaceID := namespace.NamespaceID()
-			iters, metadata, err := session.FetchTagged(ctx, namespaceID, m3query, queryOptions)
+			iters, metadata, err := session.FetchTagged(ctx, namespaceID, m3query, narrowedQueryOpts)
 			if err == nil && sampled {
 				span.LogFields(
 					log.String("namespace", namespaceID.String()),
@@ -535,10 +541,10 @@ func (s *m3storage) CompleteTags(
 
 	wg.Add(len(namespaces))
 	for _, namespace := range namespaces {
-		namespace := namespace // Capture var
+		narrowedAggOpts := narrowAggOpts(aggOpts, namespace)
+		namespace := namespace.clusterNamespace // Capture var
 		go func() {
-			_, span, sampled := xcontext.StartSampledTraceSpan(ctx,
-				tracepoint.CompleteTagsAggregate)
+			_, span, sampled := xcontext.StartSampledTraceSpan(ctx, tracepoint.CompleteTagsAggregate)
 			defer func() {
 				span.Finish()
 				wg.Done()
@@ -546,7 +552,7 @@ func (s *m3storage) CompleteTags(
 
 			session := namespace.Session()
 			namespaceID := namespace.NamespaceID()
-			aggTagIter, metadata, err := session.Aggregate(ctx, namespaceID, m3query, aggOpts)
+			aggTagIter, metadata, err := session.Aggregate(ctx, namespaceID, m3query, narrowedAggOpts)
 			if err != nil {
 				multiErr.add(err)
 				return
@@ -676,7 +682,8 @@ func (s *m3storage) SearchCompressed(
 
 	wg.Add(len(namespaces))
 	for _, namespace := range namespaces {
-		namespace := namespace // Capture var
+		narrowedM3Opts := narrowQueryOpts(m3opts, namespace)
+		namespace := namespace.clusterNamespace // Capture var
 		go func() {
 			_, span, sampled := xcontext.StartSampledTraceSpan(ctx,
 				tracepoint.SearchCompressedFetchTaggedIDs)
@@ -684,7 +691,7 @@ func (s *m3storage) SearchCompressed(
 
 			session := namespace.Session()
 			namespaceID := namespace.NamespaceID()
-			iter, metadata, err := session.FetchTaggedIDs(ctx, namespaceID, m3query, m3opts)
+			iter, metadata, err := session.FetchTaggedIDs(ctx, namespaceID, m3query, narrowedM3Opts)
 			if err == nil && sampled {
 				span.LogFields(
 					log.String("namespace", namespaceID.String()),
@@ -828,4 +835,23 @@ func (s *m3storage) writeSingle(
 	session := namespace.Session()
 	return session.WriteTagged(namespaceID, identID, iterator,
 		datapoint.Timestamp, datapoint.Value, query.Unit(), query.Annotation())
+}
+
+func narrowQueryOpts(o index.QueryOptions, namespace resolvedNamespace) index.QueryOptions {
+	narrowed := o
+	if namespace.startNarrowing > 0 && namespace.startNarrowing.After(o.StartInclusive) {
+		narrowed.StartInclusive = namespace.startNarrowing
+	}
+	if namespace.endNarrowing > 0 && namespace.endNarrowing.Before(o.EndExclusive) {
+		narrowed.EndExclusive = namespace.endNarrowing
+	}
+
+	return narrowed
+}
+
+func narrowAggOpts(o index.AggregationOptions, namespace resolvedNamespace) index.AggregationOptions {
+	narrowed := o
+	narrowed.QueryOptions = narrowQueryOpts(o.QueryOptions, namespace)
+
+	return narrowed
 }
