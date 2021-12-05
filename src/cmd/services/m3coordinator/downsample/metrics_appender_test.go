@@ -109,7 +109,7 @@ func TestSamplesAppenderPoolResetsTagsAcrossSamples(t *testing.T) {
 		appender.reset(metricsAppenderOptions{
 			tagEncoderPool:         tagEncoderPool,
 			metricTagsIteratorPool: metricTagsIteratorPool,
-			agg: agg,
+			agg:                    agg,
 			metrics: metricsAppenderMetrics{
 				processedCountNonRollup: tally.NoopScope.Counter("test-counter-non-rollup"),
 				processedCountRollup:    tally.NoopScope.Counter("test-counter-rollup"),

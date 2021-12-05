@@ -723,11 +723,11 @@ func (cfg Configuration) newAggregator(o DownsamplerOptions) (agg, error) {
 		SetRequireNamespaceWatchOnInit(cfg.Matcher.RequireNamespaceWatchOnInit).
 		SetInterruptedCh(o.InterruptedCh)
 	if v := cfg.Matcher.Cache.Capacity; v != nil {
-		scope := instrumentOpts.MetricsScope().SubScope("matcher-cache")
+		matcherScope := instrumentOpts.MetricsScope().SubScope("matcher-cache")
 		cacheOpts := cache.NewOptions().
 			SetCapacity(*v).
 			SetClockOptions(clockOpts).
-			SetInstrumentOptions(instrumentOpts.SetMetricsScope(scope))
+			SetInstrumentOptions(instrumentOpts.SetMetricsScope(matcherScope))
 		matcherOpts = matcherOpts.SetCache(cache.NewCache(cacheOpts))
 	}
 

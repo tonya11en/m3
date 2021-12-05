@@ -38,13 +38,6 @@ const (
 	defaultNamespacesKey    = "/namespaces"
 	defaultRuleSetKeyFormat = "/ruleset/%s"
 	defaultMatchRangePast   = time.Duration(math.MaxInt64)
-	// defaultMatcherCacheCapacity sets the default matcher cache
-	// capacity to zero so that the cache is turned off.
-	// This is due to discovering that there is a lot of contention
-	// used by the cache and the fact that most coordinators are used
-	// in a stateless manner with a central deployment which in turn
-	// leads to an extremely low cache hit ratio anyway.
-	defaultMatcherCacheCapacity = 0
 )
 
 var (
