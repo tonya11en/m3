@@ -51,7 +51,7 @@ func (t *MatchType) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	if str == "" {
+	if str == "" || str == "0" {
 		*t = defaultMatchType
 		return nil
 	}

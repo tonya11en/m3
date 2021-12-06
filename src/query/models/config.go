@@ -82,6 +82,14 @@ func (t *IDSchemeType) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 	}
 
+	// NB(nate): need to check for the default string in case unmarshalling
+	// a config that has not set this field. Otherwise, a config that was successfully
+	// marshalled to yaml cannot be unmarshalled.
+	if str == "" || str == "0" {
+		*t = TypeDefault
+		return nil
+	}
+
 	return fmt.Errorf("invalid MetricsType '%s' valid types are: %v",
 		str, validIDSchemes)
 }
