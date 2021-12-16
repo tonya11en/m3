@@ -1,0 +1,177 @@
+// TODO @tallen:
+//
+// This stuff should be broken up into multiple files and the fields commented.
+
+namespace flatbuffer;
+
+table Counter {
+  id:[byte];
+  annotation:[byte];
+  value:long;
+  client_time_nanos:long;
+}
+
+table Gauge {
+  id:[byte];
+  annotation:[byte];
+  value:double;
+  client_time_nanos:long;
+}
+
+table BatchTimer {
+  id:[byte];
+  annotation:[byte];
+  values:[double];
+  client_time_nanos:long;
+}
+
+table Metric {
+  id:[byte];
+  annotation:[byte];
+  type:int;
+  time_nanos:long;
+  value:double;
+}
+
+// -----------------------------------------------------------------------------
+
+table Resolution {
+  window:long;
+  precision:ushort;
+}
+
+table StoragePolicy {
+  resolution:Resolution;
+  retention:long;
+}
+
+table RollupOpTag {
+  tag:[byte];
+}
+
+table RollupOp {
+  tags:[RollupOpTag];
+  new_name:[byte];
+  type:int;
+  aggregation_id:[ulong];
+  new_name_templated:bool;
+}
+
+table TransformationOp {
+  type:long;
+}
+
+table OpUnion {
+  rollup:RollupOp;
+  type:int;
+  transformation:TransformationOp;
+}
+
+table Pipeline {
+  operations:[OpUnion];
+}
+
+table Tag {
+  name:[byte];
+  value:[byte];
+}
+
+table GraphitePrefix {
+  prefix:[byte];
+}
+
+table PipelineMetadata {
+  storage_policies:[StoragePolicy];
+  pipeline:Pipeline;
+  tags:[Tag];
+  graphite_prefix:[GraphitePrefix];
+  aggregation_id:[ulong];
+  drop_policy:uint;
+  resend_enabled:bool;
+}
+
+table Metadata {
+  pipelines:[PipelineMetadata];
+}
+
+table StagedMetadata {
+  metadata:Metadata;
+  cutover_nanos:long;
+  tombstoned:bool;
+}
+
+table TimedMetadata {
+  aggregation_id:[ulong];
+  storage_policy:[StoragePolicy];
+}
+
+// -----------------------------------------------------------------------------
+
+table WriteUntimedCounterRequest {
+  counter:Counter;
+  metadatas:[StagedMetadata];
+}
+table WriteUntimedCounterReply {
+  error:string;
+}
+
+table WriteUntimedBatchTimerRequest {
+  batch_timer:BatchTimer;
+  metadatas:[StagedMetadata];
+}
+table WriteUntimedBatchTimerReply {
+  error:string;
+}
+
+table	WriteUntimedGaugeRequest {
+  gauge:Gauge;
+  metadatas:[StagedMetadata];
+}
+table	WriteUntimedGaugeReply {
+  error:string;
+}
+
+table	WriteTimedRequest {
+  metric:Metric;
+  metadata:TimedMetadata;
+}
+table	WriteTimedReply {
+  error:string;
+}
+
+table	WritePassthroughRequest {
+  metric:Metric;
+  storage_policy:StoragePolicy;
+}
+table	WritePassthroughReply {
+  error:string;
+}
+
+table	WriteTimedWithStagedMetadatasRequest {
+  metric:Metric;
+  metadatas:[StagedMetadata];
+}
+table	WriteTimedWithStagedMetadatasReply {
+  error:string;
+}
+
+// TODO: What the hell is the streaming field?
+rpc_service Aggregator {
+  // blah blah
+  WriteUntimedCounter(WriteUntimedCounterRequest):WriteUntimedCounterReply (streaming: "bidi");
+
+  // blah blah
+  WriteUntimedBatchTimer(WriteUntimedBatchTimerRequest):WriteUntimedBatchTimerReply (streaming: "bidi");
+
+  // blah blah
+	WriteUntimedGauge(WriteUntimedGaugeRequest):WriteUntimedGaugeReply (streaming: "bidi");
+
+  // blah blah
+	WriteTimed(WriteTimedRequest):WriteTimedReply (streaming: "bidi");
+
+  // blah blah
+	WritePassthrough(WritePassthroughRequest):WritePassthroughReply (streaming: "bidi");
+
+  // blah blah
+	WriteTimedWithStagedMetadatas(WriteTimedWithStagedMetadatasRequest):WriteTimedWithStagedMetadatasReply (streaming: "bidi");
+}

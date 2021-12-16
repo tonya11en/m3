@@ -110,6 +110,8 @@ func NewClient(opts Options) (Client, error) {
 		fallthrough // LegacyAggregatorClient is an alias
 	case TCPAggregatorClient:
 		return NewTCPClient(opts)
+	case GRPCAggregatorClient:
+		return NewGRPCClient(opts)
 	}
 	return nil, fmt.Errorf("unrecognized client type: %v", clientType)
 }

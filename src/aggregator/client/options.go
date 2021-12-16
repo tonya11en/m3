@@ -39,12 +39,17 @@ type AggregatorClientType int
 const (
 	// LegacyAggregatorClient is an alias for TCPAggregatorClient
 	LegacyAggregatorClient AggregatorClientType = iota
+
 	// M3MsgAggregatorClient is the M3Msg aggregator client type that uses M3Msg to
 	// handle publishing to a M3Msg topic the aggregator consumes from.
 	M3MsgAggregatorClient
+
 	// TCPAggregatorClient is the TCP aggregator client type and uses it's own
 	// TCP negotiation, load balancing and data transmission protocol.
 	TCPAggregatorClient
+
+	// GRPCAggregatorClient is the gRPC aggregator client type that uses gRPC.
+	GRPCAggregatorClient
 
 	defaultAggregatorClient = LegacyAggregatorClient
 
@@ -79,10 +84,12 @@ var (
 		LegacyAggregatorClient,
 		M3MsgAggregatorClient,
 		TCPAggregatorClient,
+		GRPCAggregatorClient,
 	}
 
 	errTCPClientNoWatcherOptions = errors.New("legacy client: no watcher options set")
 	errM3MsgClientNoOptions      = errors.New("m3msg aggregator client: no m3msg options set")
+	errGRPCClientNoOptions       = errors.New("gRPC aggregator client: no gRPC options set")
 	errNoRWOpts                  = errors.New("no rw opts set for aggregator")
 )
 
@@ -94,6 +101,8 @@ func (t AggregatorClientType) String() string {
 		return "m3msg"
 	case TCPAggregatorClient:
 		return "tcp"
+	case GRPCAggregatorClient:
+		return "gRPC"
 	}
 	return "unknown"
 }
@@ -134,6 +143,12 @@ type Options interface {
 
 	// M3MsgOptions returns the M3Msg aggregator client options.
 	M3MsgOptions() M3MsgOptions
+
+	// SetGRPCOptions sets the gRPC aggregator client options.
+	SetGRPCOptions(value GRPCOptions) Options
+
+	// GRPCOptions returns the M3Msg aggregator client options.
+	GRPCOptions() GRPCOptions
 
 	// SetClockOptions sets the clock options.
 	SetClockOptions(value clock.Options) Options
@@ -234,6 +249,7 @@ type options struct {
 	instrumentOpts             instrument.Options
 	encoderOpts                protobuf.UnaggregatedOptions
 	m3msgOptions               M3MsgOptions
+	gRPCOptions                GRPCOptions
 	connOpts                   ConnectionOptions
 	rwOpts                     xio.Options
 	shardFn                    sharding.ShardFn
@@ -286,6 +302,11 @@ func (o *options) Validate() error {
 			return errTCPClientNoWatcherOptions
 		}
 		return nil
+	case GRPCAggregatorClient:
+		if o.watcherOpts == nil {
+			return errGRPCClientNoOptions
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown client type: %v", o.aggregatorClientType)
 	}
@@ -299,6 +320,16 @@ func (o *options) SetAggregatorClientType(value AggregatorClientType) Options {
 
 func (o *options) AggregatorClientType() AggregatorClientType {
 	return o.aggregatorClientType
+}
+
+func (o *options) SetGRPCOptions(value GRPCOptions) Options {
+	opts := *o
+	opts.gRPCOptions = value
+	return &opts
+}
+
+func (o *options) GRPCOptions() GRPCOptions {
+	return o.gRPCOptions
 }
 
 func (o *options) SetM3MsgOptions(value M3MsgOptions) Options {
