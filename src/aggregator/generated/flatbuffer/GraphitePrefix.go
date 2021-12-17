@@ -26,30 +26,12 @@ func (rcv *GraphitePrefix) Table() flatbuffers.Table {
 	return rcv._tab
 }
 
-func (rcv *GraphitePrefix) Prefix(j int) int8 {
+func (rcv *GraphitePrefix) Prefix() []byte {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.GetInt8(a + flatbuffers.UOffsetT(j*1))
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
-	return 0
-}
-
-func (rcv *GraphitePrefix) PrefixLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
-	if o != 0 {
-		return rcv._tab.VectorLen(o)
-	}
-	return 0
-}
-
-func (rcv *GraphitePrefix) MutatePrefix(j int, n int8) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
-	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.MutateInt8(a+flatbuffers.UOffsetT(j*1), n)
-	}
-	return false
+	return nil
 }
 
 func GraphitePrefixStart(builder *flatbuffers.Builder) {
@@ -57,9 +39,6 @@ func GraphitePrefixStart(builder *flatbuffers.Builder) {
 }
 func GraphitePrefixAddPrefix(builder *flatbuffers.Builder, prefix flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(prefix), 0)
-}
-func GraphitePrefixStartPrefixVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
-	return builder.StartVector(1, numElems, 1)
 }
 func GraphitePrefixEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

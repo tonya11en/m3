@@ -26,30 +26,12 @@ func (rcv *RollupOpTag) Table() flatbuffers.Table {
 	return rcv._tab
 }
 
-func (rcv *RollupOpTag) Tag(j int) int8 {
+func (rcv *RollupOpTag) Tag() []byte {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.GetInt8(a + flatbuffers.UOffsetT(j*1))
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
-	return 0
-}
-
-func (rcv *RollupOpTag) TagLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
-	if o != 0 {
-		return rcv._tab.VectorLen(o)
-	}
-	return 0
-}
-
-func (rcv *RollupOpTag) MutateTag(j int, n int8) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
-	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.MutateInt8(a+flatbuffers.UOffsetT(j*1), n)
-	}
-	return false
+	return nil
 }
 
 func RollupOpTagStart(builder *flatbuffers.Builder) {
@@ -57,9 +39,6 @@ func RollupOpTagStart(builder *flatbuffers.Builder) {
 }
 func RollupOpTagAddTag(builder *flatbuffers.Builder, tag flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(tag), 0)
-}
-func RollupOpTagStartTagVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
-	return builder.StartVector(1, numElems, 1)
 }
 func RollupOpTagEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

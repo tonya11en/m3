@@ -34,11 +34,22 @@ func (rcv *WriteUntimedBatchTimerReply) Error() []byte {
 	return nil
 }
 
+func (rcv *WriteUntimedBatchTimerReply) Id() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
 func WriteUntimedBatchTimerReplyStart(builder *flatbuffers.Builder) {
-	builder.StartObject(1)
+	builder.StartObject(2)
 }
 func WriteUntimedBatchTimerReplyAddError(builder *flatbuffers.Builder, error flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(error), 0)
+}
+func WriteUntimedBatchTimerReplyAddId(builder *flatbuffers.Builder, id flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(id), 0)
 }
 func WriteUntimedBatchTimerReplyEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

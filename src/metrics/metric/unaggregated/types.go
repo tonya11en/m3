@@ -24,6 +24,8 @@ import (
 	"errors"
 	"fmt"
 
+	flatbuffers "github.com/google/flatbuffers/go"
+	"github.com/m3db/m3/src/aggregator/generated/flatbuffer"
 	"github.com/m3db/m3/src/metrics/generated/proto/metricpb"
 	"github.com/m3db/m3/src/metrics/metadata"
 	"github.com/m3db/m3/src/metrics/metric"
@@ -74,12 +76,72 @@ func (c *Counter) FromProto(pb metricpb.Counter) {
 	c.ClientTimeNanos = xtime.UnixNano(pb.ClientTimeNanos)
 }
 
+func (c *Counter) ToFlatbuffer(b *flatbuffers.Builder) {
+	flatbuffer.CounterStart(b)
+
+	// Create the complex types.
+	id := b.CreateByteVector(c.ID)
+	annotation := b.CreateByteVector(c.Annotation)
+
+	// Add things to the buffer.
+	flatbuffer.CounterAddId(b, id)
+	flatbuffer.CounterAddAnnotation(b, annotation)
+	flatbuffer.CounterAddClientTimeNanos(b, int64(c.ClientTimeNanos))
+	flatbuffer.CounterAddValue(b, c.Value)
+
+	// Finalize the buffer.
+	b.Finish(flatbuffer.CounterEnd(b))
+}
+
+func (c *Counter) FromFlatbuffer(buf *flatbuffer.Counter) {
+	c.ID = buf.Id()
+	c.Annotation = buf.Annotation()
+	c.ClientTimeNanos = xtime.UnixNano(buf.ClientTimeNanos())
+	c.Value = buf.Value()
+}
+
 // BatchTimer is a timer containing the timer ID and a list of timer values.
 type BatchTimer struct {
 	ID              id.RawID
 	Values          []float64
 	Annotation      []byte
 	ClientTimeNanos xtime.UnixNano
+}
+
+func (t *BatchTimer) ToFlatbuffer(b *flatbuffers.Builder) {
+	flatbuffer.BatchTimerStart(b)
+
+	// Create the complex types.
+	id := b.CreateByteVector(t.ID)
+	annotation := b.CreateByteVector(t.Annotation)
+
+	numValues := len(t.Values)
+	flatbuffer.BatchTimerStartValuesVector(b, numValues)
+	for i := numValues - 1; i >= 0; i-- {
+		b.PrependFloat64(t.Values[i])
+	}
+	values := b.EndVector(numValues)
+
+	// Add things to the buffer.
+	flatbuffer.BatchTimerAddId(b, id)
+	flatbuffer.BatchTimerAddAnnotation(b, annotation)
+	flatbuffer.BatchTimerAddClientTimeNanos(b, int64(t.ClientTimeNanos))
+	flatbuffer.BatchTimerAddValues(b, values)
+
+	// Finalize the buffer.
+	b.Finish(flatbuffer.BatchTimerEnd(b))
+}
+
+func (t *BatchTimer) FromFlatbuffer(buf *flatbuffer.BatchTimer) {
+	t.ID = buf.Id()
+
+	t.Values = t.Values[:0]
+	for i := 0; i < buf.ValuesLength(); i++ {
+		t.Values = append(t.Values, buf.Values(i))
+	}
+
+	t.Annotation = buf.Annotation()
+	t.ClientTimeNanos = xtime.UnixNano(buf.ClientTimeNanos())
 }
 
 // ToUnion converts the batch timer to a metric union.
@@ -114,6 +176,30 @@ type Gauge struct {
 	Annotation      []byte
 	Value           float64
 	ClientTimeNanos xtime.UnixNano
+}
+
+func (g *Gauge) ToFlatbuffer(b *flatbuffers.Builder) {
+	flatbuffer.GaugeStart(b)
+
+	// Create the complex types.
+	id := b.CreateByteVector(g.ID)
+	annotation := b.CreateByteVector(g.Annotation)
+
+	// Add things to the buffer.
+	flatbuffer.GaugeAddId(b, id)
+	flatbuffer.GaugeAddAnnotation(b, annotation)
+	flatbuffer.GaugeAddValue(b, g.Value)
+	flatbuffer.GaugeAddClientTimeNanos(b, int64(g.ClientTimeNanos))
+
+	// Finalize the buffer.
+	b.Finish(flatbuffer.GaugeEnd(b))
+}
+
+func (g *Gauge) FromFlatbuffer(buf *flatbuffer.Gauge) {
+	g.ID = buf.Id()
+	g.Annotation = buf.Annotation()
+	g.Value = buf.Value()
+	g.ClientTimeNanos = xtime.UnixNano(buf.ClientTimeNanos())
 }
 
 // ToUnion converts the gauge to a metric union.
@@ -165,6 +251,16 @@ type GaugeWithPoliciesList struct {
 type CounterWithMetadatas struct {
 	metadata.StagedMetadatas
 	Counter
+}
+
+// todo @tallen
+func (cm *CounterWithMetadatas) ToFlatbuffer(b *flatbuffers.Builder) {
+	// todo
+	return nil
+}
+
+// todo @tallen
+func (cm *CounterWithMetadatas) FromFlatbuffer(buf *flatbuffer.Coun) {
 }
 
 // ToProto converts the counter with metadatas to a protobuf message in place.
