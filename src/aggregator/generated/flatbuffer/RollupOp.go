@@ -26,48 +26,16 @@ func (rcv *RollupOp) Table() flatbuffers.Table {
 	return rcv._tab
 }
 
-func (rcv *RollupOp) Tags(obj *RollupOpTag, j int) bool {
+func (rcv *RollupOp) Id() []byte {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
-	if o != 0 {
-		x := rcv._tab.Vector(o)
-		x += flatbuffers.UOffsetT(j) * 4
-		x = rcv._tab.Indirect(x)
-		obj.Init(rcv._tab.Bytes, x)
-		return true
-	}
-	return false
-}
-
-func (rcv *RollupOp) TagsLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
-	if o != 0 {
-		return rcv._tab.VectorLen(o)
-	}
-	return 0
-}
-
-func (rcv *RollupOp) NewName() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
 		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
 	return nil
 }
 
-func (rcv *RollupOp) Type() int32 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
-	if o != 0 {
-		return rcv._tab.GetInt32(o + rcv._tab.Pos)
-	}
-	return 0
-}
-
-func (rcv *RollupOp) MutateType(n int32) bool {
-	return rcv._tab.MutateInt32Slot(8, n)
-}
-
 func (rcv *RollupOp) AggregationId(j int) uint64 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
 		a := rcv._tab.Vector(o)
 		return rcv._tab.GetUint64(a + flatbuffers.UOffsetT(j*8))
@@ -76,7 +44,7 @@ func (rcv *RollupOp) AggregationId(j int) uint64 {
 }
 
 func (rcv *RollupOp) AggregationIdLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
 		return rcv._tab.VectorLen(o)
 	}
@@ -84,7 +52,7 @@ func (rcv *RollupOp) AggregationIdLength() int {
 }
 
 func (rcv *RollupOp) MutateAggregationId(j int, n uint64) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
 		a := rcv._tab.Vector(o)
 		return rcv._tab.MutateUint64(a+flatbuffers.UOffsetT(j*8), n)
@@ -92,41 +60,17 @@ func (rcv *RollupOp) MutateAggregationId(j int, n uint64) bool {
 	return false
 }
 
-func (rcv *RollupOp) NewNameTemplated() bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
-	if o != 0 {
-		return rcv._tab.GetBool(o + rcv._tab.Pos)
-	}
-	return false
-}
-
-func (rcv *RollupOp) MutateNewNameTemplated(n bool) bool {
-	return rcv._tab.MutateBoolSlot(12, n)
-}
-
 func RollupOpStart(builder *flatbuffers.Builder) {
-	builder.StartObject(5)
+	builder.StartObject(2)
 }
-func RollupOpAddTags(builder *flatbuffers.Builder, tags flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(tags), 0)
-}
-func RollupOpStartTagsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
-	return builder.StartVector(4, numElems, 4)
-}
-func RollupOpAddNewName(builder *flatbuffers.Builder, newName flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(newName), 0)
-}
-func RollupOpAddType(builder *flatbuffers.Builder, type_ int32) {
-	builder.PrependInt32Slot(2, type_, 0)
+func RollupOpAddId(builder *flatbuffers.Builder, id flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(id), 0)
 }
 func RollupOpAddAggregationId(builder *flatbuffers.Builder, aggregationId flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(aggregationId), 0)
+	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(aggregationId), 0)
 }
 func RollupOpStartAggregationIdVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(8, numElems, 8)
-}
-func RollupOpAddNewNameTemplated(builder *flatbuffers.Builder, newNameTemplated bool) {
-	builder.PrependBoolSlot(4, newNameTemplated, false)
 }
 func RollupOpEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

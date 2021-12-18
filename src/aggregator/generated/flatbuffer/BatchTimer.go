@@ -80,8 +80,28 @@ func (rcv *BatchTimer) MutateClientTimeNanos(n int64) bool {
 	return rcv._tab.MutateInt64Slot(10, n)
 }
 
+func (rcv *BatchTimer) Metadatas(obj *StagedMetadata, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *BatchTimer) MetadatasLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
 func BatchTimerStart(builder *flatbuffers.Builder) {
-	builder.StartObject(4)
+	builder.StartObject(5)
 }
 func BatchTimerAddId(builder *flatbuffers.Builder, id flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(id), 0)
@@ -97,6 +117,12 @@ func BatchTimerStartValuesVector(builder *flatbuffers.Builder, numElems int) fla
 }
 func BatchTimerAddClientTimeNanos(builder *flatbuffers.Builder, clientTimeNanos int64) {
 	builder.PrependInt64Slot(3, clientTimeNanos, 0)
+}
+func BatchTimerAddMetadatas(builder *flatbuffers.Builder, metadatas flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(metadatas), 0)
+}
+func BatchTimerStartMetadatasVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
 }
 func BatchTimerEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

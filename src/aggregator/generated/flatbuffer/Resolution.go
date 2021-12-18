@@ -38,16 +38,16 @@ func (rcv *Resolution) MutateWindow(n int64) bool {
 	return rcv._tab.MutateInt64Slot(4, n)
 }
 
-func (rcv *Resolution) Precision() uint16 {
+func (rcv *Resolution) Precision() int64 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
-		return rcv._tab.GetUint16(o + rcv._tab.Pos)
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
 	}
 	return 0
 }
 
-func (rcv *Resolution) MutatePrecision(n uint16) bool {
-	return rcv._tab.MutateUint16Slot(6, n)
+func (rcv *Resolution) MutatePrecision(n int64) bool {
+	return rcv._tab.MutateInt64Slot(6, n)
 }
 
 func ResolutionStart(builder *flatbuffers.Builder) {
@@ -56,8 +56,8 @@ func ResolutionStart(builder *flatbuffers.Builder) {
 func ResolutionAddWindow(builder *flatbuffers.Builder, window int64) {
 	builder.PrependInt64Slot(0, window, 0)
 }
-func ResolutionAddPrecision(builder *flatbuffers.Builder, precision uint16) {
-	builder.PrependUint16Slot(1, precision, 0)
+func ResolutionAddPrecision(builder *flatbuffers.Builder, precision int64) {
+	builder.PrependInt64Slot(1, precision, 0)
 }
 func ResolutionEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

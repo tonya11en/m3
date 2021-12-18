@@ -39,37 +39,11 @@ func (rcv *WriteUntimedBatchTimerRequest) BatchTimer(obj *BatchTimer) *BatchTime
 	return nil
 }
 
-func (rcv *WriteUntimedBatchTimerRequest) Metadatas(obj *StagedMetadata, j int) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
-	if o != 0 {
-		x := rcv._tab.Vector(o)
-		x += flatbuffers.UOffsetT(j) * 4
-		x = rcv._tab.Indirect(x)
-		obj.Init(rcv._tab.Bytes, x)
-		return true
-	}
-	return false
-}
-
-func (rcv *WriteUntimedBatchTimerRequest) MetadatasLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
-	if o != 0 {
-		return rcv._tab.VectorLen(o)
-	}
-	return 0
-}
-
 func WriteUntimedBatchTimerRequestStart(builder *flatbuffers.Builder) {
-	builder.StartObject(2)
+	builder.StartObject(1)
 }
 func WriteUntimedBatchTimerRequestAddBatchTimer(builder *flatbuffers.Builder, batchTimer flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(batchTimer), 0)
-}
-func WriteUntimedBatchTimerRequestAddMetadatas(builder *flatbuffers.Builder, metadatas flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(metadatas), 0)
-}
-func WriteUntimedBatchTimerRequestStartMetadatasVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
-	return builder.StartVector(4, numElems, 4)
 }
 func WriteUntimedBatchTimerRequestEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

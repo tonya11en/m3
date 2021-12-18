@@ -66,8 +66,28 @@ func (rcv *Gauge) MutateClientTimeNanos(n int64) bool {
 	return rcv._tab.MutateInt64Slot(10, n)
 }
 
+func (rcv *Gauge) Metadatas(obj *StagedMetadata, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *Gauge) MetadatasLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
 func GaugeStart(builder *flatbuffers.Builder) {
-	builder.StartObject(4)
+	builder.StartObject(5)
 }
 func GaugeAddId(builder *flatbuffers.Builder, id flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(id), 0)
@@ -80,6 +100,12 @@ func GaugeAddValue(builder *flatbuffers.Builder, value float64) {
 }
 func GaugeAddClientTimeNanos(builder *flatbuffers.Builder, clientTimeNanos int64) {
 	builder.PrependInt64Slot(3, clientTimeNanos, 0)
+}
+func GaugeAddMetadatas(builder *flatbuffers.Builder, metadatas flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(metadatas), 0)
+}
+func GaugeStartMetadatasVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
 }
 func GaugeEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

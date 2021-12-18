@@ -39,37 +39,11 @@ func (rcv *WriteUntimedCounterRequest) Counter(obj *Counter) *Counter {
 	return nil
 }
 
-func (rcv *WriteUntimedCounterRequest) Metadatas(obj *StagedMetadata, j int) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
-	if o != 0 {
-		x := rcv._tab.Vector(o)
-		x += flatbuffers.UOffsetT(j) * 4
-		x = rcv._tab.Indirect(x)
-		obj.Init(rcv._tab.Bytes, x)
-		return true
-	}
-	return false
-}
-
-func (rcv *WriteUntimedCounterRequest) MetadatasLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
-	if o != 0 {
-		return rcv._tab.VectorLen(o)
-	}
-	return 0
-}
-
 func WriteUntimedCounterRequestStart(builder *flatbuffers.Builder) {
-	builder.StartObject(2)
+	builder.StartObject(1)
 }
 func WriteUntimedCounterRequestAddCounter(builder *flatbuffers.Builder, counter flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(counter), 0)
-}
-func WriteUntimedCounterRequestAddMetadatas(builder *flatbuffers.Builder, metadatas flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(metadatas), 0)
-}
-func WriteUntimedCounterRequestStartMetadatasVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
-	return builder.StartVector(4, numElems, 4)
 }
 func WriteUntimedCounterRequestEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

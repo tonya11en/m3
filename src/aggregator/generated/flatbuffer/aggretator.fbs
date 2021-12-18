@@ -9,6 +9,7 @@ table Counter {
   annotation:string;
   value:long;
   client_time_nanos:long;
+  metadatas:[StagedMetadata];
 }
 
 table Gauge {
@@ -16,6 +17,7 @@ table Gauge {
   annotation:string;
   value:double;
   client_time_nanos:long;
+  metadatas:[StagedMetadata];
 }
 
 table BatchTimer {
@@ -23,6 +25,7 @@ table BatchTimer {
   annotation:string;
   values:[double];
   client_time_nanos:long;
+  metadatas:[StagedMetadata];
 }
 
 table Metric {
@@ -31,13 +34,14 @@ table Metric {
   type:int;
   time_nanos:long;
   value:double;
+  metadatas:[StagedMetadata];
 }
 
 // -----------------------------------------------------------------------------
 
 table Resolution {
   window:long;
-  precision:ushort;
+  precision:long;
 }
 
 table StoragePolicy {
@@ -45,16 +49,9 @@ table StoragePolicy {
   retention:long;
 }
 
-table RollupOpTag {
-  tag:string;
-}
-
 table RollupOp {
-  tags:[RollupOpTag];
-  new_name:string;
-  type:int;
+  id:string;
   aggregation_id:[ulong];
-  new_name_templated:bool;
 }
 
 table TransformationOp {
@@ -109,7 +106,6 @@ table TimedMetadata {
 
 table WriteUntimedCounterRequest {
   counter:Counter;
-  metadatas:[StagedMetadata];
 }
 table WriteUntimedCounterReply {
   error:string;
@@ -118,7 +114,6 @@ table WriteUntimedCounterReply {
 
 table WriteUntimedBatchTimerRequest {
   batch_timer:BatchTimer;
-  metadatas:[StagedMetadata];
 }
 table WriteUntimedBatchTimerReply {
   error:string;
@@ -127,7 +122,6 @@ table WriteUntimedBatchTimerReply {
 
 table	WriteUntimedGaugeRequest {
   gauge:Gauge;
-  metadatas:[StagedMetadata];
 }
 table	WriteUntimedGaugeReply {
   error:string;
@@ -154,7 +148,6 @@ table	WritePassthroughReply {
 
 table	WriteTimedWithStagedMetadatasRequest {
   metric:Metric;
-  metadatas:[StagedMetadata];
 }
 table	WriteTimedWithStagedMetadatasReply {
   error:string;

@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	MAX_INFLIGHT_REQUESTS       = 300
-	DEFAULT_TIMEOUT             = 5 * time.Second
-	FLATBUFFER_INITIAL_BUF_SIZE = 4096
+	MAX_INFLIGHT_REQUESTS         = 300
+	DEFAULT_TIMEOUT               = 5 * time.Second
+	FLATBUFFER_INITIAL_SIZE_BYTES = 2048
 )
 
 type server struct {
@@ -46,7 +46,7 @@ func NewServer(address string, aggregator aggregator.Aggregator) (xserver.Server
 		aggregator: aggregator,
 		builderPool: sync.Pool{
 			New: func() interface{} {
-				builder := flatbuffers.NewBuilder(FLATBUFFER_INITIAL_BUF_SIZE)
+				builder := flatbuffers.NewBuilder(FLATBUFFER_INITIAL_SIZE_BYTES)
 				return &builder
 			},
 		},
