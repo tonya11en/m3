@@ -26,23 +26,23 @@ func (rcv *TransformationOp) Table() flatbuffers.Table {
 	return rcv._tab
 }
 
-func (rcv *TransformationOp) Type() int64 {
+func (rcv *TransformationOp) Type() int32 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
-		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+		return rcv._tab.GetInt32(o + rcv._tab.Pos)
 	}
 	return 0
 }
 
-func (rcv *TransformationOp) MutateType(n int64) bool {
-	return rcv._tab.MutateInt64Slot(4, n)
+func (rcv *TransformationOp) MutateType(n int32) bool {
+	return rcv._tab.MutateInt32Slot(4, n)
 }
 
 func TransformationOpStart(builder *flatbuffers.Builder) {
 	builder.StartObject(1)
 }
-func TransformationOpAddType(builder *flatbuffers.Builder, type_ int64) {
-	builder.PrependInt64Slot(0, type_, 0)
+func TransformationOpAddType(builder *flatbuffers.Builder, type_ int32) {
+	builder.PrependInt32Slot(0, type_, 0)
 }
 func TransformationOpEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

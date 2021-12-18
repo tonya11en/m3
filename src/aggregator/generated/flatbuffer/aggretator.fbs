@@ -55,7 +55,7 @@ table RollupOp {
 }
 
 table TransformationOp {
-  type:long;
+  type:int;
 }
 
 table OpUnion {

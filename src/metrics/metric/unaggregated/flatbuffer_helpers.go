@@ -1,10 +1,13 @@
 package unaggregated
 
 import (
+	"time"
+
 	flatbuffers "github.com/google/flatbuffers/go"
 
 	"github.com/m3db/m3/src/aggregator/generated/flatbuffer"
 	"github.com/m3db/m3/src/metrics/metadata"
+	"github.com/m3db/m3/src/metrics/pipeline"
 	"github.com/m3db/m3/src/metrics/pipeline/applied"
 	"github.com/m3db/m3/src/metrics/policy"
 	"github.com/m3db/m3/src/metrics/transformation"
@@ -26,7 +29,7 @@ func (c *Counter) populateCounterFlatbuf(b *flatbuffers.Builder) {
 
 func (c *Counter) ToFlatbuffer(b *flatbuffers.Builder) {
 	flatbuffer.CounterStart(b)
-	c.populateCounterFlatbuffer(b)
+	c.populateCounterFlatbuf(b)
 	b.Finish(flatbuffer.CounterEnd(b))
 }
 
@@ -107,20 +110,136 @@ func (cm *CounterWithMetadatas) ToFlatbuffer(b *flatbuffers.Builder) {
 }
 
 // todo @tallen
-func (cm *CounterWithMetadatas) FromFlatbuffer(buf *flatbuffer.Counter) {
+func (cm *CounterWithMetadatas) FromFlatbuffer(buf *flatbuffer.Counter) error {
 	cm.ID = buf.Id()
 	cm.Annotation = buf.Annotation()
 	cm.Value = buf.Value()
 	cm.ClientTimeNanos = xtime.UnixNano(buf.ClientTimeNanos())
-	cm.StagedMetadatas = make(metadata.StagedMetadatas, buf.MetadatasLength())
-	for i := 0; i < buf.MetadatasLength(); i++ {
+	cm.StagedMetadatas = make([]metadata.StagedMetadata, buf.MetadatasLength())
 
+	smbuf := new(flatbuffer.StagedMetadata)
+	var err error
+	for i := 0; i < buf.MetadatasLength(); i++ {
+		if buf.Metadatas(smbuf, i) {
+			cm.StagedMetadatas[i], err = getStagedMetadata(smbuf)
+			if err != nil {
+				return err
+			}
+		}
 	}
+
+	return nil
 }
 
 // todo BatchTimerWithMetadatas
 
 // todo GaugeWithMetadatas
+
+func getPipeline(pbuf *flatbuffer.Pipeline) applied.Pipeline {
+	p := applied.Pipeline{
+		Operations: make([]applied.OpUnion, pbuf.OperationsLength()),
+	}
+
+	opUnionPlaceholder := new(flatbuffer.OpUnion)
+	for i := 0; i < pbuf.OperationsLength(); i++ {
+		if !pbuf.Operations(opUnionPlaceholder, i) {
+			continue
+		}
+
+		p.Operations[i].Type = pipeline.OpType(opUnionPlaceholder.Type())
+
+		tPlaceholder := new(flatbuffer.TransformationOp)
+		// TODO: do I have to make a new pointer var?
+		t := opUnionPlaceholder.Transformation(tPlaceholder)
+		p.Operations[i].Transformation.Type = transformation.Type(t.Type())
+
+		rPlaceholder := new(flatbuffer.RollupOp)
+		r := opUnionPlaceholder.Rollup(rPlaceholder)
+		p.Operations[i].Rollup.ID = r.Id()
+		for i := 0; i < r.AggregationIdLength(); i++ {
+			p.Operations[i].Rollup.AggregationID[i] = r.AggregationId(i)
+		}
+	}
+
+	return p
+}
+
+func getPipelineMetadata(pmbuf *flatbuffer.PipelineMetadata) (metadata.PipelineMetadata, error) {
+	pm := metadata.PipelineMetadata{}
+
+	for i := 0; i < pmbuf.AggregationIdLength(); i++ {
+		pm.AggregationID[i] = pmbuf.AggregationId(i)
+	}
+
+	pm.DropPolicy = policy.DropPolicy(pmbuf.DropPolicy())
+	pm.ResendEnabled = pmbuf.ResendEnabled()
+
+	pipelinePlaceholder := new(flatbuffer.Pipeline)
+	pm.Pipeline = getPipeline(pmbuf.Pipeline(pipelinePlaceholder))
+
+	prefixPlaceholder := new(flatbuffer.GraphitePrefix)
+	pm.GraphitePrefix = make([][]byte, pmbuf.GraphitePrefixLength())
+	for i := 0; i < pmbuf.GraphitePrefixLength(); i++ {
+		if !pmbuf.GraphitePrefix(prefixPlaceholder, i) {
+			continue
+		}
+		pm.GraphitePrefix[i] = prefixPlaceholder.Prefix()
+	}
+
+	tagPlaceholder := new(flatbuffer.Tag)
+	pm.Tags = make([]models.Tag, pmbuf.TagsLength())
+	for i := 0; i < pmbuf.TagsLength(); i++ {
+		if !pmbuf.Tags(tagPlaceholder, i) {
+			continue
+		}
+		pm.Tags[i].Name = tagPlaceholder.Name()
+		pm.Tags[i].Value = tagPlaceholder.Value()
+	}
+
+	spPlaceholder := new(flatbuffer.StoragePolicy)
+	resPlaceholder := new(flatbuffer.Resolution)
+	pm.StoragePolicies = make(policy.StoragePolicies, pmbuf.StoragePoliciesLength())
+	for i := 0; i < pmbuf.StoragePoliciesLength(); i++ {
+		if !pmbuf.StoragePolicies(spPlaceholder, i) {
+			continue
+		}
+		retention := time.Duration(spPlaceholder.Retention())
+		resolution := spPlaceholder.Resolution(resPlaceholder)
+		window := time.Duration(resolution.Window())
+		precision, err := xtime.UnitFromDuration(time.Duration(resolution.Precision()))
+		if err != nil {
+			return pm, err
+		}
+
+		pm.StoragePolicies[i] = policy.NewStoragePolicy(window, precision, retention)
+	}
+
+	return pm, nil
+}
+
+func getStagedMetadata(mbuf *flatbuffer.StagedMetadata) (metadata.StagedMetadata, error) {
+	toReturn := metadata.StagedMetadata{}
+
+	// TODO: these allocations are awful. fix it with pooling or something
+	placeholderMetadata := new(flatbuffer.Metadata)
+	metadataBuf := mbuf.Metadata(placeholderMetadata)
+	toReturn.Pipelines = make(metadata.PipelineMetadatas, 0, metadataBuf.PipelinesLength())
+	placeholderPipelineMetadata := new(flatbuffer.PipelineMetadata)
+	for i := 0; i < metadataBuf.PipelinesLength(); i++ {
+		if !metadataBuf.Pipelines(placeholderPipelineMetadata, i) {
+			continue
+		}
+		pm, err := getPipelineMetadata(placeholderPipelineMetadata)
+		if err != nil {
+			return toReturn, err
+		}
+		toReturn.Pipelines = append(toReturn.Pipelines, pm)
+	}
+
+	toReturn.CutoverNanos = mbuf.CutoverNanos()
+	toReturn.Tombstoned = mbuf.Tombstoned()
+	return toReturn, nil
+}
 
 func makeResolutionFlatbuf(r *policy.Resolution, b *flatbuffers.Builder) (flatbuffers.UOffsetT, error) {
 	flatbuffer.ResolutionStart(b)
@@ -138,7 +257,7 @@ func makeResolutionFlatbuf(r *policy.Resolution, b *flatbuffers.Builder) (flatbu
 // make transformation op
 func makeTransformationOpFlatbuf(t transformation.Type, b *flatbuffers.Builder) flatbuffers.UOffsetT {
 	flatbuffer.TransformationOpStart(b)
-	flatbuffer.TransformationOpAddType(b, int64(t))
+	flatbuffer.TransformationOpAddType(b, int32(t))
 	return flatbuffer.TransformationOpEnd(b)
 }
 
@@ -245,8 +364,8 @@ func makeStoragePolicyVector(policies policy.StoragePolicies, b *flatbuffers.Bui
 
 func makeTagVector(tags []models.Tag, b *flatbuffers.Builder) flatbuffers.UOffsetT {
 	offsets := make([]flatbuffers.UOffsetT, len(tags))
-	numTags := len(pm.Tags)
-	for idx, t := range pm.Tags {
+	numTags := len(tags)
+	for idx, t := range tags {
 		offsets[idx] = makeTagFlatbuf(&t, b)
 	}
 	flatbuffer.PipelineMetadataStartTagsVector(b, numTags)
