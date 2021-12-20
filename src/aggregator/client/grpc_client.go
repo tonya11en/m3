@@ -1,6 +1,10 @@
 package client
 
 import (
+	"context"
+	"sync"
+
+	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/m3db/m3/src/aggregator/generated/flatbuffer"
 	"github.com/m3db/m3/src/metrics/metadata"
 	"github.com/m3db/m3/src/metrics/metric/aggregated"
@@ -9,8 +13,20 @@ import (
 	"google.golang.org/grpc"
 )
 
+var (
+	builderPool = sync.Pool{
+		New: func() interface{} {
+			// TODO don't hardcode
+			builder := flatbuffers.NewBuilder(2048)
+			return &builder
+		},
+	}
+)
+
 type gRPCClient struct {
 	aggClient flatbuffer.AggregatorClient
+
+	// Various streams.
 }
 
 func NewGRPCClient(opts Options) (Client, error) {
@@ -41,35 +57,46 @@ func NewGRPCClient(opts Options) (Client, error) {
 
 func (c *gRPCClient) Init() error {
 	// todo
+	// Spin off sender.
 	return nil
 }
 
-func (c *gRPCClient) WriteUntimedCounter(counter unaggregated.Counter, metadatas metadata.StagedMetadatas) error {
+func (c *gRPCClient) spin() {
+
+}
+
+func (c *gRPCClient) WriteUntimedCounter(
+	counter unaggregated.Counter, metadatas metadata.StagedMetadatas) error {
+	c.aggClient.WriteUntimedCounter(context.TODO())
+	return nil
+}
+
+func (c *gRPCClient) WriteUntimedBatchTimer(
+	batchTimer unaggregated.BatchTimer, metadatas metadata.StagedMetadatas) error {
 	// todo
 	return nil
 }
 
-func (c *gRPCClient) WriteUntimedBatchTimer(batchTimer unaggregated.BatchTimer, metadatas metadata.StagedMetadatas) error {
+func (c *gRPCClient) WriteUntimedGauge(
+	gauge unaggregated.Gauge, metadatas metadata.StagedMetadatas) error {
 	// todo
 	return nil
 }
 
-func (c *gRPCClient) WriteUntimedGauge(gauge unaggregated.Gauge, metadatas metadata.StagedMetadatas) error {
+func (c *gRPCClient) WriteTimed(
+	metric aggregated.Metric, metadata metadata.TimedMetadata) error {
 	// todo
 	return nil
 }
 
-func (c *gRPCClient) WriteTimed(metric aggregated.Metric, metadata metadata.TimedMetadata) error {
+func (c *gRPCClient) WritePassthrough(
+	metric aggregated.Metric, storagePolicy policy.StoragePolicy) error {
 	// todo
 	return nil
 }
 
-func (c *gRPCClient) WritePassthrough(metric aggregated.Metric, storagePolicy policy.StoragePolicy) error {
-	// todo
-	return nil
-}
-
-func (c *gRPCClient) WriteTimedWithStagedMetadatas(metric aggregated.Metric, metadatas metadata.StagedMetadatas) error {
+func (c *gRPCClient) WriteTimedWithStagedMetadatas(
+	metric aggregated.Metric, metadatas metadata.StagedMetadatas) error {
 	return nil
 }
 

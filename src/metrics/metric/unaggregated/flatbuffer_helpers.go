@@ -102,14 +102,26 @@ func (g *Gauge) FromFlatbuffer(buf *flatbuffer.Gauge) {
 	g.ClientTimeNanos = xtime.UnixNano(buf.ClientTimeNanos())
 }
 
-// todo @tallennn
-func (cm *CounterWithMetadatas) ToFlatbuffer(b *flatbuffers.Builder) {
+func (cm *CounterWithMetadatas) ToFlatbuffer(b *flatbuffers.Builder) error {
 	flatbuffer.CounterStart(b)
 	cm.populateCounterFlatbuf(b)
+
+	flatbuffer.GaugeStartMetadatasVector(b, len(cm.StagedMetadatas))
+	numMetadatas := len(cm.StagedMetadatas)
+	for i := numMetadatas - 1; i >= 0; i-- {
+		stagedMetadataOffset, err := makeStagedMetadataFlatbuf(&cm.StagedMetadatas[i], b)
+		if err != nil {
+			return err
+		}
+		b.PrependUOffsetT(stagedMetadataOffset)
+	}
+	offset := b.EndVector(numMetadatas)
+	flatbuffer.CounterAddMetadatas(b, offset)
+
 	b.Finish(flatbuffer.CounterEnd(b))
+	return nil
 }
 
-// todo @tallen
 func (cm *CounterWithMetadatas) FromFlatbuffer(buf *flatbuffer.Counter) error {
 	cm.ID = buf.Id()
 	cm.Annotation = buf.Annotation()
@@ -132,8 +144,93 @@ func (cm *CounterWithMetadatas) FromFlatbuffer(buf *flatbuffer.Counter) error {
 }
 
 // todo BatchTimerWithMetadatas
+func (bt *BatchTimerWithMetadatas) ToFlatbuffer(b *flatbuffers.Builder) error {
+	flatbuffer.CounterStart(b)
+	bt.populateBatchTimerFlatbuffer(b)
+
+	flatbuffer.BatchTimerStartMetadatasVector(b, len(bt.StagedMetadatas))
+	numMetadatas := len(bt.StagedMetadatas)
+	for i := numMetadatas - 1; i >= 0; i-- {
+		stagedMetadataOffset, err := makeStagedMetadataFlatbuf(&bt.StagedMetadatas[i], b)
+		if err != nil {
+			return err
+		}
+		b.PrependUOffsetT(stagedMetadataOffset)
+	}
+	offset := b.EndVector(numMetadatas)
+	flatbuffer.CounterAddMetadatas(b, offset)
+
+	b.Finish(flatbuffer.CounterEnd(b))
+	return nil
+}
+
+func (bt *BatchTimerWithMetadatas) FromFlatbuffer(buf *flatbuffer.BatchTimer) error {
+	bt.ID = buf.Id()
+	bt.Annotation = buf.Annotation()
+	bt.ClientTimeNanos = xtime.UnixNano(buf.ClientTimeNanos())
+	bt.StagedMetadatas = make([]metadata.StagedMetadata, buf.MetadatasLength())
+
+	bt.Values = make([]float64, buf.ValuesLength())
+	for i := 0; i < buf.ValuesLength(); i++ {
+		bt.Values[i] = buf.Values(i)
+	}
+
+	smbuf := new(flatbuffer.StagedMetadata)
+	var err error
+	for i := 0; i < buf.MetadatasLength(); i++ {
+		if buf.Metadatas(smbuf, i) {
+			bt.StagedMetadatas[i], err = getStagedMetadata(smbuf)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
 
 // todo GaugeWithMetadatas
+func (g *GaugeWithMetadatas) ToFlatbuffer(b *flatbuffers.Builder) error {
+	flatbuffer.CounterStart(b)
+	g.populateGaugeFlatbuffer(b)
+
+	flatbuffer.GaugeStartMetadatasVector(b, len(g.StagedMetadatas))
+	numMetadatas := len(g.StagedMetadatas)
+	for i := numMetadatas - 1; i >= 0; i-- {
+		stagedMetadataOffset, err := makeStagedMetadataFlatbuf(&g.StagedMetadatas[i], b)
+		if err != nil {
+			return err
+		}
+		b.PrependUOffsetT(stagedMetadataOffset)
+	}
+	offset := b.EndVector(numMetadatas)
+	flatbuffer.CounterAddMetadatas(b, offset)
+
+	b.Finish(flatbuffer.CounterEnd(b))
+	return nil
+}
+
+// todo @tallen
+func (g *GaugeWithMetadatas) FromFlatbuffer(buf *flatbuffer.Gauge) error {
+	g.ID = buf.Id()
+	g.Annotation = buf.Annotation()
+	g.Value = buf.Value()
+	g.ClientTimeNanos = xtime.UnixNano(buf.ClientTimeNanos())
+	g.StagedMetadatas = make([]metadata.StagedMetadata, buf.MetadatasLength())
+
+	smbuf := new(flatbuffer.StagedMetadata)
+	var err error
+	for i := 0; i < buf.MetadatasLength(); i++ {
+		if buf.Metadatas(smbuf, i) {
+			g.StagedMetadatas[i], err = getStagedMetadata(smbuf)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
 
 func getPipeline(pbuf *flatbuffer.Pipeline) applied.Pipeline {
 	p := applied.Pipeline{
@@ -142,7 +239,7 @@ func getPipeline(pbuf *flatbuffer.Pipeline) applied.Pipeline {
 
 	opUnionPlaceholder := new(flatbuffer.OpUnion)
 	for i := 0; i < pbuf.OperationsLength(); i++ {
-		if !pbuf.Operations(opUnionPlaceholder, i) {
+		if !pbuf.Operations(nil, i) {
 			continue
 		}
 

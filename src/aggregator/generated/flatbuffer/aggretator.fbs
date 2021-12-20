@@ -157,20 +157,20 @@ table	WriteTimedWithStagedMetadatasReply {
 // TODO: What the hell is the streaming field?
 rpc_service Aggregator {
   // blah blah
-  WriteUntimedCounter(WriteUntimedCounterRequest):WriteUntimedCounterReply (streaming: "bidi");
+  WriteUntimedCounter(WriteUntimedCounterRequest):WriteUntimedCounterReply (streaming: "unary");
 
   // blah blah
-  WriteUntimedBatchTimer(WriteUntimedBatchTimerRequest):WriteUntimedBatchTimerReply (streaming: "bidi");
+  WriteUntimedBatchTimer(WriteUntimedBatchTimerRequest):WriteUntimedBatchTimerReply (streaming: "unary");
 
   // blah blah
-	WriteUntimedGauge(WriteUntimedGaugeRequest):WriteUntimedGaugeReply (streaming: "bidi");
+	WriteUntimedGauge(WriteUntimedGaugeRequest):WriteUntimedGaugeReply (streaming: "unary");
 
   // blah blah
-	WriteTimed(WriteTimedRequest):WriteTimedReply (streaming: "bidi");
+	WriteTimed(WriteTimedRequest):WriteTimedReply (streaming: "unary");
 
   // blah blah
-	WritePassthrough(WritePassthroughRequest):WritePassthroughReply (streaming: "bidi");
+	WritePassthrough(WritePassthroughRequest):WritePassthroughReply (streaming: "unary");
 
   // blah blah
-	WriteTimedWithStagedMetadatas(WriteTimedWithStagedMetadatasRequest):WriteTimedWithStagedMetadatasReply (streaming: "bidi");
+	WriteTimedWithStagedMetadatas(WriteTimedWithStagedMetadatasRequest):WriteTimedWithStagedMetadatasReply (streaming: "unary");
 }
