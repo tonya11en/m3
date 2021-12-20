@@ -1,9 +1,7 @@
 package grpc
 
 import (
-	"context"
-	"io"
-	"log"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -27,8 +25,7 @@ const (
 var (
 	builderPool = sync.Pool{
 		New: func() interface{} {
-			builder := flatbuffers.NewBuilder(FLATBUFFER_INITIAL_SIZE_BYTES)
-			return &builder
+			return flatbuffers.NewBuilder(FLATBUFFER_INITIAL_SIZE_BYTES)
 		},
 	}
 
@@ -81,9 +78,12 @@ type server struct {
 // Returns a new gRPC aggregator server.
 func NewServer(address string, aggregator aggregator.Aggregator) (xserver.Server, error) {
 	// todo
+	fmt.Println("@tallen making new server.. registering")
 
 	// Create the gRPC server.
-	var opts []grpc.ServerOption
+	opts := []grpc.ServerOption{
+		grpc.CustomCodec(flatbuffers.FlatbuffersCodec{}),
+	}
 	s := server{
 		grpcServer:       grpc.NewServer(opts...),
 		aggregator:       aggregator,
@@ -91,6 +91,7 @@ func NewServer(address string, aggregator aggregator.Aggregator) (xserver.Server
 	}
 
 	flatbuffer.RegisterAggregatorServer(s.grpcServer, &s)
+	fmt.Println("@tallen done registering")
 
 	return &s, nil
 }
@@ -174,9 +175,11 @@ func returnCounterBuf(c *flatbuffer.Counter) {
 
 func (s *server) ListenAndServe() error {
 	//todo
+	fmt.Println("@tallen listen and serving")
 	var err error
-	s.listener, err = net.Listen("tcp", "localhost:13370")
+	s.listener, err = net.Listen("tcp", "localhost:13371")
 	if err != nil {
+		fmt.Println("@tallen error trying to listen", err.Error())
 		return err
 	}
 
@@ -184,6 +187,7 @@ func (s *server) ListenAndServe() error {
 }
 
 func (s *server) Serve(l net.Listener) error {
+	fmt.Println("@tallen serving..")
 
 	return s.grpcServer.Serve(l)
 }
@@ -195,190 +199,50 @@ func (s *server) Close() {
 	s.listener = nil
 }
 
-func (s *server) WriteUntimedCounter(stream flatbuffer.Aggregator_WriteUntimedCounterServer) error {
-	var wg sync.WaitGroup
+func (s *server) WriteUntimedCounter(req *flatbuffer.WriteUntimedCounterRequest, stream flatbuffer.Aggregator_WriteUntimedCounterServer) error {
+	//	fmt.Println("@tallen in the server!")
 
-	for {
-		req, err := stream.Recv()
-		// TODO: configurable timeout
-		if err == io.EOF {
-			wg.Wait()
-			return nil
-		} else if err != nil {
-			// TODO: gracefully handle in-flight requests?
-			return err
-		}
+	b := getBuilder()
+	defer returnBuilder(b)
 
-		s.activeRequestSem <- struct{}{}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer func() { <-s.activeRequestSem }()
+	var id []byte
+	var errString string
+	var err error
 
-			b := getBuilder()
-			defer returnBuilder(b)
-
-			flatbuffer.WriteUntimedCounterReplyStart(b)
-
-			id, err := s.handleWriteUntimedCounter(req)
-			if err != nil {
-				offset := b.CreateByteString([]byte(err.Error()))
-				flatbuffer.WriteUntimedCounterReplyAddError(b, offset)
-			}
-			offset := b.CreateByteString(id)
-			flatbuffer.WriteUntimedCounterReplyAddId(b, offset)
-			flatbuffer.WriteUntimedCounterReplyAddId(b, offset)
-			flatbuffer.WriteUntimedCounterReplyEnd(b)
-
-			// TODO: handle this error
-			_ = stream.Send(b)
-		}()
+	id, err = s.handleWriteUntimedCounter(req)
+	if err != nil {
+		errString = err.Error()
 	}
+	idOffset := b.CreateByteString(id)
+	errStringOffset := b.CreateByteString([]byte(errString))
+
+	flatbuffer.WriteUntimedCounterReplyStart(b)
+	flatbuffer.WriteUntimedCounterReplyAddId(b, idOffset)
+	flatbuffer.WriteUntimedCounterReplyAddError(b, errStringOffset)
+	offset := flatbuffer.WriteUntimedCounterReplyEnd(b)
+	b.Finish(offset)
+
+	//	fmt.Println("@tallen sending reply from server!")
+	return stream.Send(b)
 }
 
-func (s *server) WriteUntimedBatchTimer(stream flatbuffer.Aggregator_WriteUntimedBatchTimerServer) error {
-	for {
-		req, err := stream.Recv()
-
-		if err == io.EOF {
-			// Wait for the active requests to finish up.
-			return nil
-		} else if err != nil {
-			// TODO: gracefully handle in-flight requests?
-			return err
-		}
-
-		log.Println("@tallen received a message. not writing out string since idk how now")
-
-		// TODO: maybe spin off another goroutine.
-		builder, err := s.handleWriteUntimedBatchCounter(stream.Context(), req)
-		if err != nil {
-			return err
-		}
-
-		err = stream.Send(builder)
-		if err != nil {
-			return err
-		}
-	}
+func (s *server) WriteUntimedBatchTimer(*flatbuffer.WriteUntimedBatchTimerRequest, flatbuffer.Aggregator_WriteUntimedBatchTimerServer) error {
+	//return s.handleWriteUntimedBatchCounter(ctx, req)
+	return nil
 }
 
-func (s *server) WriteUntimedGauge(stream flatbuffer.Aggregator_WriteUntimedGaugeServer) error {
-	for {
-		req, err := stream.Recv()
-		// TODO: configurable timeout
-		ctx, cancelFunc := context.WithTimeout(stream.Context(), DEFAULT_TIMEOUT)
-		defer cancelFunc()
-
-		if err == io.EOF {
-			// Wait for the active requests to finish up.
-			return nil
-		} else if err != nil {
-			// TODO: gracefully handle in-flight requests?
-			return err
-		}
-
-		log.Println("@tallen received a message. not writing out string since idk how now")
-
-		// TODO: maybe spin off another goroutine.
-		builder, err := s.handleWriteUntimedGauge(ctx, req)
-		if err != nil {
-			return err
-		}
-
-		err = stream.Send(builder)
-		if err != nil {
-			return err
-		}
-	}
+func (s *server) WriteUntimedGauge(*flatbuffer.WriteUntimedGaugeRequest, flatbuffer.Aggregator_WriteUntimedGaugeServer) error {
+	return nil
 }
 
-func (s *server) WriteTimed(stream flatbuffer.Aggregator_WriteTimedServer) error {
-	for {
-		req, err := stream.Recv()
-		// TODO: configurable timeout
-		ctx, cancelFunc := context.WithTimeout(stream.Context(), DEFAULT_TIMEOUT)
-		defer cancelFunc()
-
-		if err == io.EOF {
-			// Wait for the active requests to finish up.
-			return nil
-		} else if err != nil {
-			// TODO: gracefully handle in-flight requests?
-			return err
-		}
-
-		log.Println("@tallen received a message. not writing out string since idk how now")
-
-		// TODO: maybe spin off another goroutine.
-		builder, err := s.handleWriteTimed(ctx, req)
-		if err != nil {
-			return err
-		}
-
-		err = stream.Send(builder)
-		if err != nil {
-			return err
-		}
-	}
+func (s *server) WriteTimed(*flatbuffer.WriteTimedRequest, flatbuffer.Aggregator_WriteTimedServer) error {
+	return nil
 }
 
-func (s *server) WritePassthrough(stream flatbuffer.Aggregator_WritePassthroughServer) error {
-	for {
-		req, err := stream.Recv()
-		// TODO: configurable timeout
-		ctx, cancelFunc := context.WithTimeout(stream.Context(), DEFAULT_TIMEOUT)
-		defer cancelFunc()
-
-		if err == io.EOF {
-			// Wait for the active requests to finish up.
-			return nil
-		} else if err != nil {
-			// TODO: gracefully handle in-flight requests?
-			return err
-		}
-
-		log.Println("@tallen received a message. not writing out string since idk how now")
-
-		// TODO: maybe spin off another goroutine.
-		builder, err := s.handleWritePassthrough(ctx, req)
-		if err != nil {
-			return err
-		}
-
-		err = stream.Send(builder)
-		if err != nil {
-			return err
-		}
-	}
+func (s *server) WritePassthrough(*flatbuffer.WritePassthroughRequest, flatbuffer.Aggregator_WritePassthroughServer) error {
+	return nil
 }
 
-func (s *server) WriteTimedWithStagedMetadatas(stream flatbuffer.Aggregator_WriteTimedWithStagedMetadatasServer) error {
-	for {
-		req, err := stream.Recv()
-		// TODO: configurable timeout
-		ctx, cancelFunc := context.WithTimeout(stream.Context(), DEFAULT_TIMEOUT)
-		defer cancelFunc()
-
-		if err == io.EOF {
-			// Wait for the active requests to finish up.
-			return nil
-		} else if err != nil {
-			// TODO: gracefully handle in-flight requests?
-			return err
-		}
-
-		log.Println("@tallen received a message. not writing out string since idk how now")
-
-		// TODO: maybe spin off another goroutine.
-		builder, err := s.handleWriteTimedWithStagedMetadatas(ctx, req)
-		if err != nil {
-			return err
-		}
-
-		err = stream.Send(builder)
-		if err != nil {
-			return err
-		}
-	}
+func (s *server) WriteTimedWithStagedMetadatas(*flatbuffer.WriteTimedWithStagedMetadatasRequest, flatbuffer.Aggregator_WriteTimedWithStagedMetadatasServer) error {
+	return nil
 }

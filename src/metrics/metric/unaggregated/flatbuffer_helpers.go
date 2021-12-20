@@ -21,16 +21,16 @@ func (c *Counter) populateCounterFlatbuf(b *flatbuffers.Builder) {
 	annotation := b.CreateByteVector(c.Annotation)
 
 	// Add things to the buffer.
+	flatbuffer.CounterStart(b)
 	flatbuffer.CounterAddId(b, id)
 	flatbuffer.CounterAddAnnotation(b, annotation)
 	flatbuffer.CounterAddClientTimeNanos(b, int64(c.ClientTimeNanos))
 	flatbuffer.CounterAddValue(b, c.Value)
 }
 
-func (c *Counter) ToFlatbuffer(b *flatbuffers.Builder) {
-	flatbuffer.CounterStart(b)
+func (c *Counter) ToFlatbuffer(b *flatbuffers.Builder) flatbuffers.UOffsetT {
 	c.populateCounterFlatbuf(b)
-	b.Finish(flatbuffer.CounterEnd(b))
+	return flatbuffer.CounterEnd(b)
 }
 
 func (c *Counter) FromFlatbuffer(buf *flatbuffer.Counter) {
@@ -103,7 +103,6 @@ func (g *Gauge) FromFlatbuffer(buf *flatbuffer.Gauge) {
 }
 
 func (cm *CounterWithMetadatas) ToFlatbuffer(b *flatbuffers.Builder) error {
-	flatbuffer.CounterStart(b)
 	cm.populateCounterFlatbuf(b)
 
 	flatbuffer.GaugeStartMetadatasVector(b, len(cm.StagedMetadatas))

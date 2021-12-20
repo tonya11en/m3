@@ -111,7 +111,7 @@ func NewClient(opts Options) (Client, error) {
 	case TCPAggregatorClient:
 		return NewTCPClient(opts)
 	case GRPCAggregatorClient:
-		return NewGRPCClient(opts)
+		return NewGRPCClient()
 	}
 	return nil, fmt.Errorf("unrecognized client type: %v", clientType)
 }
