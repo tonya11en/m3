@@ -10,11 +10,6 @@ import (
 	xtime "github.com/m3db/m3/src/x/time"
 )
 
-// Abstracts away the various gRPC streams that the handler will deliver builders to.
-type clientStream interface {
-	Send(*flatbuffers.Builder) error
-}
-
 func (s *server) handleWriteUntimedCounter(
 	req *flatbuffer.WriteUntimedCounterRequest) ([]byte, error) {
 
@@ -25,7 +20,8 @@ func (s *server) handleWriteUntimedCounter(
 	c := getCounterBuf()
 	defer returnCounterBuf(c)
 
-	messageUnion.CounterWithMetadatas.FromFlatbuffer(req.Counter(c))
+	req.Counter(c)
+	messageUnion.CounterWithMetadatas.FromFlatbuffer(c)
 	metricUnion.Type = metric.CounterType
 	metricUnion.ID = c.Id()
 	metricUnion.CounterVal = c.Value()

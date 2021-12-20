@@ -13,7 +13,6 @@ import (
 	"github.com/m3db/m3/src/aggregator/generated/flatbuffer"
 	"github.com/m3db/m3/src/metrics/encoding"
 	"github.com/m3db/m3/src/metrics/metric/unaggregated"
-	xserver "github.com/m3db/m3/src/x/server"
 )
 
 const (
@@ -76,7 +75,7 @@ type server struct {
 
 // TODO: add options
 // Returns a new gRPC aggregator server.
-func NewServer(address string, aggregator aggregator.Aggregator) (xserver.Server, error) {
+func NewServer(address string, aggregator aggregator.Aggregator) (*server, error) {
 	// todo
 	fmt.Println("@tallen making new server.. registering")
 
@@ -145,9 +144,7 @@ func getBatchTimerBuf() *flatbuffer.BatchTimer {
 }
 
 func returnBatchTimerBuf(c *flatbuffer.BatchTimer) {
-	if c.MetadatasLength() > 0 {
-		// todo
-	}
+	// todo: address metadatas..
 	batchTimerBufPool.Put(c)
 }
 
@@ -156,9 +153,7 @@ func getMetricBuf() *flatbuffer.Metric {
 }
 
 func returnMetricBuf(c *flatbuffer.Metric) {
-	if c.MetadatasLength() > 0 {
-		// todo
-	}
+	// todo: address metadatas..
 	metricBufPool.Put(c)
 }
 
@@ -167,9 +162,7 @@ func getCounterBuf() *flatbuffer.Counter {
 }
 
 func returnCounterBuf(c *flatbuffer.Counter) {
-	if c.MetadatasLength() > 0 {
-		// todo
-	}
+	// todo: address metadatas..
 	counterBufPool.Put(c)
 }
 

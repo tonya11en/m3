@@ -4,357 +4,409 @@
 
 package flatbuffer
 
-import "github.com/google/flatbuffers/go"
-
 import (
-  context "context"
-  grpc "google.golang.org/grpc"
+	context "context"
+
+	flatbuffers "github.com/google/flatbuffers/go"
+	grpc "google.golang.org/grpc"
 )
 
 // Client API for Aggregator service
-type AggregatorClient interface{
-  WriteUntimedCounter(ctx context.Context, in *flatbuffers.Builder, 
-  	opts... grpc.CallOption) (Aggregator_WriteUntimedCounterClient, error)  
-  WriteUntimedBatchTimer(ctx context.Context, in *flatbuffers.Builder, 
-  	opts... grpc.CallOption) (Aggregator_WriteUntimedBatchTimerClient, error)  
-  WriteUntimedGauge(ctx context.Context, in *flatbuffers.Builder, 
-  	opts... grpc.CallOption) (Aggregator_WriteUntimedGaugeClient, error)  
-  WriteTimed(ctx context.Context, in *flatbuffers.Builder, 
-  	opts... grpc.CallOption) (Aggregator_WriteTimedClient, error)  
-  WritePassthrough(ctx context.Context, in *flatbuffers.Builder, 
-  	opts... grpc.CallOption) (Aggregator_WritePassthroughClient, error)  
-  WriteTimedWithStagedMetadatas(ctx context.Context, in *flatbuffers.Builder, 
-  	opts... grpc.CallOption) (Aggregator_WriteTimedWithStagedMetadatasClient, error)  
+type AggregatorClient interface {
+	WriteUntimedCounter(ctx context.Context, in *flatbuffers.Builder,
+		opts ...grpc.CallOption) (Aggregator_WriteUntimedCounterClient, error)
+	WriteUntimedBatchTimer(ctx context.Context, in *flatbuffers.Builder,
+		opts ...grpc.CallOption) (Aggregator_WriteUntimedBatchTimerClient, error)
+	WriteUntimedGauge(ctx context.Context, in *flatbuffers.Builder,
+		opts ...grpc.CallOption) (Aggregator_WriteUntimedGaugeClient, error)
+	WriteTimed(ctx context.Context, in *flatbuffers.Builder,
+		opts ...grpc.CallOption) (Aggregator_WriteTimedClient, error)
+	WritePassthrough(ctx context.Context, in *flatbuffers.Builder,
+		opts ...grpc.CallOption) (Aggregator_WritePassthroughClient, error)
+	WriteTimedWithStagedMetadatas(ctx context.Context, in *flatbuffers.Builder,
+		opts ...grpc.CallOption) (Aggregator_WriteTimedWithStagedMetadatasClient, error)
 }
 
 type aggregatorClient struct {
-  cc *grpc.ClientConn
+	cc *grpc.ClientConn
 }
 
 func NewAggregatorClient(cc *grpc.ClientConn) AggregatorClient {
-  return &aggregatorClient{cc}
+	return &aggregatorClient{cc}
 }
 
-func (c *aggregatorClient) WriteUntimedCounter(ctx context.Context, in *flatbuffers.Builder, 
-	opts... grpc.CallOption) (Aggregator_WriteUntimedCounterClient, error) {
-  stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[0], c.cc, "/flatbuffer.Aggregator/WriteUntimedCounter", opts...)
-  if err != nil { return nil, err }
-  x := &aggregatorWriteUntimedCounterClient{stream}
-  if err := x.ClientStream.SendMsg(in); err != nil { return nil, err }
-  if err := x.ClientStream.CloseSend(); err != nil { return nil, err }
-  return x,nil
+func (c *aggregatorClient) WriteUntimedCounter(ctx context.Context, in *flatbuffers.Builder,
+	opts ...grpc.CallOption) (Aggregator_WriteUntimedCounterClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[0], c.cc, "/flatbuffer.Aggregator/WriteUntimedCounter", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &aggregatorWriteUntimedCounterClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
 type Aggregator_WriteUntimedCounterClient interface {
-  Recv() (*WriteUntimedCounterReply, error)
-  grpc.ClientStream
+	Recv() (*WriteUntimedCounterReply, error)
+	grpc.ClientStream
 }
 
-type aggregatorWriteUntimedCounterClient struct{
-  grpc.ClientStream
+type aggregatorWriteUntimedCounterClient struct {
+	grpc.ClientStream
 }
 
 func (x *aggregatorWriteUntimedCounterClient) Recv() (*WriteUntimedCounterReply, error) {
-  m := new(WriteUntimedCounterReply)
-  if err := x.ClientStream.RecvMsg(m); err != nil { return nil, err }
-  return m, nil
+	m := new(WriteUntimedCounterReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
-func (c *aggregatorClient) WriteUntimedBatchTimer(ctx context.Context, in *flatbuffers.Builder, 
-	opts... grpc.CallOption) (Aggregator_WriteUntimedBatchTimerClient, error) {
-  stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[1], c.cc, "/flatbuffer.Aggregator/WriteUntimedBatchTimer", opts...)
-  if err != nil { return nil, err }
-  x := &aggregatorWriteUntimedBatchTimerClient{stream}
-  if err := x.ClientStream.SendMsg(in); err != nil { return nil, err }
-  if err := x.ClientStream.CloseSend(); err != nil { return nil, err }
-  return x,nil
+func (c *aggregatorClient) WriteUntimedBatchTimer(ctx context.Context, in *flatbuffers.Builder,
+	opts ...grpc.CallOption) (Aggregator_WriteUntimedBatchTimerClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[1], c.cc, "/flatbuffer.Aggregator/WriteUntimedBatchTimer", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &aggregatorWriteUntimedBatchTimerClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
 type Aggregator_WriteUntimedBatchTimerClient interface {
-  Recv() (*WriteUntimedBatchTimerReply, error)
-  grpc.ClientStream
+	Recv() (*WriteUntimedBatchTimerReply, error)
+	grpc.ClientStream
 }
 
-type aggregatorWriteUntimedBatchTimerClient struct{
-  grpc.ClientStream
+type aggregatorWriteUntimedBatchTimerClient struct {
+	grpc.ClientStream
 }
 
 func (x *aggregatorWriteUntimedBatchTimerClient) Recv() (*WriteUntimedBatchTimerReply, error) {
-  m := new(WriteUntimedBatchTimerReply)
-  if err := x.ClientStream.RecvMsg(m); err != nil { return nil, err }
-  return m, nil
+	m := new(WriteUntimedBatchTimerReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
-func (c *aggregatorClient) WriteUntimedGauge(ctx context.Context, in *flatbuffers.Builder, 
-	opts... grpc.CallOption) (Aggregator_WriteUntimedGaugeClient, error) {
-  stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[2], c.cc, "/flatbuffer.Aggregator/WriteUntimedGauge", opts...)
-  if err != nil { return nil, err }
-  x := &aggregatorWriteUntimedGaugeClient{stream}
-  if err := x.ClientStream.SendMsg(in); err != nil { return nil, err }
-  if err := x.ClientStream.CloseSend(); err != nil { return nil, err }
-  return x,nil
+func (c *aggregatorClient) WriteUntimedGauge(ctx context.Context, in *flatbuffers.Builder,
+	opts ...grpc.CallOption) (Aggregator_WriteUntimedGaugeClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[2], c.cc, "/flatbuffer.Aggregator/WriteUntimedGauge", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &aggregatorWriteUntimedGaugeClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
 type Aggregator_WriteUntimedGaugeClient interface {
-  Recv() (*WriteUntimedGaugeReply, error)
-  grpc.ClientStream
+	Recv() (*WriteUntimedGaugeReply, error)
+	grpc.ClientStream
 }
 
-type aggregatorWriteUntimedGaugeClient struct{
-  grpc.ClientStream
+type aggregatorWriteUntimedGaugeClient struct {
+	grpc.ClientStream
 }
 
 func (x *aggregatorWriteUntimedGaugeClient) Recv() (*WriteUntimedGaugeReply, error) {
-  m := new(WriteUntimedGaugeReply)
-  if err := x.ClientStream.RecvMsg(m); err != nil { return nil, err }
-  return m, nil
+	m := new(WriteUntimedGaugeReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
-func (c *aggregatorClient) WriteTimed(ctx context.Context, in *flatbuffers.Builder, 
-	opts... grpc.CallOption) (Aggregator_WriteTimedClient, error) {
-  stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[3], c.cc, "/flatbuffer.Aggregator/WriteTimed", opts...)
-  if err != nil { return nil, err }
-  x := &aggregatorWriteTimedClient{stream}
-  if err := x.ClientStream.SendMsg(in); err != nil { return nil, err }
-  if err := x.ClientStream.CloseSend(); err != nil { return nil, err }
-  return x,nil
+func (c *aggregatorClient) WriteTimed(ctx context.Context, in *flatbuffers.Builder,
+	opts ...grpc.CallOption) (Aggregator_WriteTimedClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[3], c.cc, "/flatbuffer.Aggregator/WriteTimed", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &aggregatorWriteTimedClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
 type Aggregator_WriteTimedClient interface {
-  Recv() (*WriteTimedReply, error)
-  grpc.ClientStream
+	Recv() (*WriteTimedReply, error)
+	grpc.ClientStream
 }
 
-type aggregatorWriteTimedClient struct{
-  grpc.ClientStream
+type aggregatorWriteTimedClient struct {
+	grpc.ClientStream
 }
 
 func (x *aggregatorWriteTimedClient) Recv() (*WriteTimedReply, error) {
-  m := new(WriteTimedReply)
-  if err := x.ClientStream.RecvMsg(m); err != nil { return nil, err }
-  return m, nil
+	m := new(WriteTimedReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
-func (c *aggregatorClient) WritePassthrough(ctx context.Context, in *flatbuffers.Builder, 
-	opts... grpc.CallOption) (Aggregator_WritePassthroughClient, error) {
-  stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[4], c.cc, "/flatbuffer.Aggregator/WritePassthrough", opts...)
-  if err != nil { return nil, err }
-  x := &aggregatorWritePassthroughClient{stream}
-  if err := x.ClientStream.SendMsg(in); err != nil { return nil, err }
-  if err := x.ClientStream.CloseSend(); err != nil { return nil, err }
-  return x,nil
+func (c *aggregatorClient) WritePassthrough(ctx context.Context, in *flatbuffers.Builder,
+	opts ...grpc.CallOption) (Aggregator_WritePassthroughClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[4], c.cc, "/flatbuffer.Aggregator/WritePassthrough", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &aggregatorWritePassthroughClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
 type Aggregator_WritePassthroughClient interface {
-  Recv() (*WritePassthroughReply, error)
-  grpc.ClientStream
+	Recv() (*WritePassthroughReply, error)
+	grpc.ClientStream
 }
 
-type aggregatorWritePassthroughClient struct{
-  grpc.ClientStream
+type aggregatorWritePassthroughClient struct {
+	grpc.ClientStream
 }
 
 func (x *aggregatorWritePassthroughClient) Recv() (*WritePassthroughReply, error) {
-  m := new(WritePassthroughReply)
-  if err := x.ClientStream.RecvMsg(m); err != nil { return nil, err }
-  return m, nil
+	m := new(WritePassthroughReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
-func (c *aggregatorClient) WriteTimedWithStagedMetadatas(ctx context.Context, in *flatbuffers.Builder, 
-	opts... grpc.CallOption) (Aggregator_WriteTimedWithStagedMetadatasClient, error) {
-  stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[5], c.cc, "/flatbuffer.Aggregator/WriteTimedWithStagedMetadatas", opts...)
-  if err != nil { return nil, err }
-  x := &aggregatorWriteTimedWithStagedMetadatasClient{stream}
-  if err := x.ClientStream.SendMsg(in); err != nil { return nil, err }
-  if err := x.ClientStream.CloseSend(); err != nil { return nil, err }
-  return x,nil
+func (c *aggregatorClient) WriteTimedWithStagedMetadatas(ctx context.Context, in *flatbuffers.Builder,
+	opts ...grpc.CallOption) (Aggregator_WriteTimedWithStagedMetadatasClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Aggregator_serviceDesc.Streams[5], c.cc, "/flatbuffer.Aggregator/WriteTimedWithStagedMetadatas", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &aggregatorWriteTimedWithStagedMetadatasClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
 type Aggregator_WriteTimedWithStagedMetadatasClient interface {
-  Recv() (*WriteTimedWithStagedMetadatasReply, error)
-  grpc.ClientStream
+	Recv() (*WriteTimedWithStagedMetadatasReply, error)
+	grpc.ClientStream
 }
 
-type aggregatorWriteTimedWithStagedMetadatasClient struct{
-  grpc.ClientStream
+type aggregatorWriteTimedWithStagedMetadatasClient struct {
+	grpc.ClientStream
 }
 
 func (x *aggregatorWriteTimedWithStagedMetadatasClient) Recv() (*WriteTimedWithStagedMetadatasReply, error) {
-  m := new(WriteTimedWithStagedMetadatasReply)
-  if err := x.ClientStream.RecvMsg(m); err != nil { return nil, err }
-  return m, nil
+	m := new(WriteTimedWithStagedMetadatasReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // Server API for Aggregator service
 type AggregatorServer interface {
-  WriteUntimedCounter(*WriteUntimedCounterRequest, Aggregator_WriteUntimedCounterServer) error  
-  WriteUntimedBatchTimer(*WriteUntimedBatchTimerRequest, Aggregator_WriteUntimedBatchTimerServer) error  
-  WriteUntimedGauge(*WriteUntimedGaugeRequest, Aggregator_WriteUntimedGaugeServer) error  
-  WriteTimed(*WriteTimedRequest, Aggregator_WriteTimedServer) error  
-  WritePassthrough(*WritePassthroughRequest, Aggregator_WritePassthroughServer) error  
-  WriteTimedWithStagedMetadatas(*WriteTimedWithStagedMetadatasRequest, Aggregator_WriteTimedWithStagedMetadatasServer) error  
+	WriteUntimedCounter(*WriteUntimedCounterRequest, Aggregator_WriteUntimedCounterServer) error
+	WriteUntimedBatchTimer(*WriteUntimedBatchTimerRequest, Aggregator_WriteUntimedBatchTimerServer) error
+	WriteUntimedGauge(*WriteUntimedGaugeRequest, Aggregator_WriteUntimedGaugeServer) error
+	WriteTimed(*WriteTimedRequest, Aggregator_WriteTimedServer) error
+	WritePassthrough(*WritePassthroughRequest, Aggregator_WritePassthroughServer) error
+	WriteTimedWithStagedMetadatas(*WriteTimedWithStagedMetadatasRequest, Aggregator_WriteTimedWithStagedMetadatasServer) error
 }
 
 func RegisterAggregatorServer(s *grpc.Server, srv AggregatorServer) {
-  s.RegisterService(&_Aggregator_serviceDesc, srv)
+	s.RegisterService(&_Aggregator_serviceDesc, srv)
 }
 
 func _Aggregator_WriteUntimedCounter_Handler(srv interface{}, stream grpc.ServerStream) error {
-  m := new(WriteUntimedCounterRequest)
-  if err := stream.RecvMsg(m); err != nil { return err }
-  return srv.(AggregatorServer).WriteUntimedCounter(m, &aggregatorWriteUntimedCounterServer{stream})
+	m := new(WriteUntimedCounterRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AggregatorServer).WriteUntimedCounter(m, &aggregatorWriteUntimedCounterServer{stream})
 }
 
-type Aggregator_WriteUntimedCounterServer interface { 
-  Send(* flatbuffers.Builder) error
-  grpc.ServerStream
+type Aggregator_WriteUntimedCounterServer interface {
+	Send(*flatbuffers.Builder) error
+	grpc.ServerStream
 }
 
 type aggregatorWriteUntimedCounterServer struct {
-  grpc.ServerStream
+	grpc.ServerStream
 }
 
 func (x *aggregatorWriteUntimedCounterServer) Send(m *flatbuffers.Builder) error {
-  return x.ServerStream.SendMsg(m)
+	return x.ServerStream.SendMsg(m)
 }
-
 
 func _Aggregator_WriteUntimedBatchTimer_Handler(srv interface{}, stream grpc.ServerStream) error {
-  m := new(WriteUntimedBatchTimerRequest)
-  if err := stream.RecvMsg(m); err != nil { return err }
-  return srv.(AggregatorServer).WriteUntimedBatchTimer(m, &aggregatorWriteUntimedBatchTimerServer{stream})
+	m := new(WriteUntimedBatchTimerRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AggregatorServer).WriteUntimedBatchTimer(m, &aggregatorWriteUntimedBatchTimerServer{stream})
 }
 
-type Aggregator_WriteUntimedBatchTimerServer interface { 
-  Send(* flatbuffers.Builder) error
-  grpc.ServerStream
+type Aggregator_WriteUntimedBatchTimerServer interface {
+	Send(*flatbuffers.Builder) error
+	grpc.ServerStream
 }
 
 type aggregatorWriteUntimedBatchTimerServer struct {
-  grpc.ServerStream
+	grpc.ServerStream
 }
 
 func (x *aggregatorWriteUntimedBatchTimerServer) Send(m *flatbuffers.Builder) error {
-  return x.ServerStream.SendMsg(m)
+	return x.ServerStream.SendMsg(m)
 }
-
 
 func _Aggregator_WriteUntimedGauge_Handler(srv interface{}, stream grpc.ServerStream) error {
-  m := new(WriteUntimedGaugeRequest)
-  if err := stream.RecvMsg(m); err != nil { return err }
-  return srv.(AggregatorServer).WriteUntimedGauge(m, &aggregatorWriteUntimedGaugeServer{stream})
+	m := new(WriteUntimedGaugeRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AggregatorServer).WriteUntimedGauge(m, &aggregatorWriteUntimedGaugeServer{stream})
 }
 
-type Aggregator_WriteUntimedGaugeServer interface { 
-  Send(* flatbuffers.Builder) error
-  grpc.ServerStream
+type Aggregator_WriteUntimedGaugeServer interface {
+	Send(*flatbuffers.Builder) error
+	grpc.ServerStream
 }
 
 type aggregatorWriteUntimedGaugeServer struct {
-  grpc.ServerStream
+	grpc.ServerStream
 }
 
 func (x *aggregatorWriteUntimedGaugeServer) Send(m *flatbuffers.Builder) error {
-  return x.ServerStream.SendMsg(m)
+	return x.ServerStream.SendMsg(m)
 }
-
 
 func _Aggregator_WriteTimed_Handler(srv interface{}, stream grpc.ServerStream) error {
-  m := new(WriteTimedRequest)
-  if err := stream.RecvMsg(m); err != nil { return err }
-  return srv.(AggregatorServer).WriteTimed(m, &aggregatorWriteTimedServer{stream})
+	m := new(WriteTimedRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AggregatorServer).WriteTimed(m, &aggregatorWriteTimedServer{stream})
 }
 
-type Aggregator_WriteTimedServer interface { 
-  Send(* flatbuffers.Builder) error
-  grpc.ServerStream
+type Aggregator_WriteTimedServer interface {
+	Send(*flatbuffers.Builder) error
+	grpc.ServerStream
 }
 
 type aggregatorWriteTimedServer struct {
-  grpc.ServerStream
+	grpc.ServerStream
 }
 
 func (x *aggregatorWriteTimedServer) Send(m *flatbuffers.Builder) error {
-  return x.ServerStream.SendMsg(m)
+	return x.ServerStream.SendMsg(m)
 }
-
 
 func _Aggregator_WritePassthrough_Handler(srv interface{}, stream grpc.ServerStream) error {
-  m := new(WritePassthroughRequest)
-  if err := stream.RecvMsg(m); err != nil { return err }
-  return srv.(AggregatorServer).WritePassthrough(m, &aggregatorWritePassthroughServer{stream})
+	m := new(WritePassthroughRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AggregatorServer).WritePassthrough(m, &aggregatorWritePassthroughServer{stream})
 }
 
-type Aggregator_WritePassthroughServer interface { 
-  Send(* flatbuffers.Builder) error
-  grpc.ServerStream
+type Aggregator_WritePassthroughServer interface {
+	Send(*flatbuffers.Builder) error
+	grpc.ServerStream
 }
 
 type aggregatorWritePassthroughServer struct {
-  grpc.ServerStream
+	grpc.ServerStream
 }
 
 func (x *aggregatorWritePassthroughServer) Send(m *flatbuffers.Builder) error {
-  return x.ServerStream.SendMsg(m)
+	return x.ServerStream.SendMsg(m)
 }
-
 
 func _Aggregator_WriteTimedWithStagedMetadatas_Handler(srv interface{}, stream grpc.ServerStream) error {
-  m := new(WriteTimedWithStagedMetadatasRequest)
-  if err := stream.RecvMsg(m); err != nil { return err }
-  return srv.(AggregatorServer).WriteTimedWithStagedMetadatas(m, &aggregatorWriteTimedWithStagedMetadatasServer{stream})
+	m := new(WriteTimedWithStagedMetadatasRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AggregatorServer).WriteTimedWithStagedMetadatas(m, &aggregatorWriteTimedWithStagedMetadatasServer{stream})
 }
 
-type Aggregator_WriteTimedWithStagedMetadatasServer interface { 
-  Send(* flatbuffers.Builder) error
-  grpc.ServerStream
+type Aggregator_WriteTimedWithStagedMetadatasServer interface {
+	Send(*flatbuffers.Builder) error
+	grpc.ServerStream
 }
 
 type aggregatorWriteTimedWithStagedMetadatasServer struct {
-  grpc.ServerStream
+	grpc.ServerStream
 }
 
 func (x *aggregatorWriteTimedWithStagedMetadatasServer) Send(m *flatbuffers.Builder) error {
-  return x.ServerStream.SendMsg(m)
+	return x.ServerStream.SendMsg(m)
 }
-
 
 var _Aggregator_serviceDesc = grpc.ServiceDesc{
-  ServiceName: "flatbuffer.Aggregator",
-  HandlerType: (*AggregatorServer)(nil),
-  Methods: []grpc.MethodDesc{
-  },
-  Streams: []grpc.StreamDesc{
-    {
-      StreamName: "WriteUntimedCounter",
-      Handler: _Aggregator_WriteUntimedCounter_Handler, 
-      ServerStreams: true,
-    },
-    {
-      StreamName: "WriteUntimedBatchTimer",
-      Handler: _Aggregator_WriteUntimedBatchTimer_Handler, 
-      ServerStreams: true,
-    },
-    {
-      StreamName: "WriteUntimedGauge",
-      Handler: _Aggregator_WriteUntimedGauge_Handler, 
-      ServerStreams: true,
-    },
-    {
-      StreamName: "WriteTimed",
-      Handler: _Aggregator_WriteTimed_Handler, 
-      ServerStreams: true,
-    },
-    {
-      StreamName: "WritePassthrough",
-      Handler: _Aggregator_WritePassthrough_Handler, 
-      ServerStreams: true,
-    },
-    {
-      StreamName: "WriteTimedWithStagedMetadatas",
-      Handler: _Aggregator_WriteTimedWithStagedMetadatas_Handler, 
-      ServerStreams: true,
-    },
-  },
+	ServiceName: "flatbuffer.Aggregator",
+	HandlerType: (*AggregatorServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "WriteUntimedCounter",
+			Handler:       _Aggregator_WriteUntimedCounter_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "WriteUntimedBatchTimer",
+			Handler:       _Aggregator_WriteUntimedBatchTimer_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "WriteUntimedGauge",
+			Handler:       _Aggregator_WriteUntimedGauge_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "WriteTimed",
+			Handler:       _Aggregator_WriteTimed_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "WritePassthrough",
+			Handler:       _Aggregator_WritePassthrough_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "WriteTimedWithStagedMetadatas",
+			Handler:       _Aggregator_WriteTimedWithStagedMetadatas_Handler,
+			ServerStreams: true,
+		},
+	},
 }
-

@@ -88,7 +88,6 @@ func (c *gRPCClient) WriteUntimedCounter(
 	flatbuffer.WriteUntimedCounterRequestAddCounter(b, offset)
 	offset = flatbuffer.WriteUntimedCounterRequestEnd(b)
 	b.Finish(offset)
-
 	stream, err := c.aggClient.WriteUntimedCounter(context.Background(), b)
 	if err != nil {
 		return err

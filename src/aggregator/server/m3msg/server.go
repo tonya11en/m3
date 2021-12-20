@@ -54,6 +54,14 @@ func NewServer(
 	return xserver.NewServer(address, handler, opts.ServerOptions()), nil
 }
 
+// @tallen HAX
+func NewMessageProcessorHax(agg aggregator.Aggregator, logger *zap.Logger) *messageProcessor {
+	return &messageProcessor{
+		aggregator: agg,
+		logger:     logger,
+	}
+}
+
 type messageProcessor struct {
 	pb         metricpb.MetricWithMetadatas
 	union      encoding.UnaggregatedMessageUnion
