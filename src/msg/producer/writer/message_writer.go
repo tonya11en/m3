@@ -239,6 +239,7 @@ type messageWriterImpl struct {
 	nowFn clock.NowFn
 }
 
+// @tallen i think this is where flatbuf/grpc should be used.
 func newMessageWriter(
 	replicatedShardID uint64,
 	mPool messagePool,
@@ -346,7 +347,7 @@ func (w *messageWriterImpl) write(
 
 	for i := len(iterationIndexes) - 1; i >= 0; i-- {
 		consumerWriter := consumerWriters[randIndex(iterationIndexes, i)]
-		if err := consumerWriter.Write(connIndex, w.encoder.Bytes()); err != nil {
+		if err := consumerWriter.Write(connIndex, w.encoder.Bytes(), m); err != nil {
 			writeErrors++
 			continue
 		}

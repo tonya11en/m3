@@ -1,0 +1,28 @@
+// Message... TODO
+ 
+namespace msgflatbuf;
+ 
+table Message {
+  value:[byte];
+
+  // We choose to embed the message metadata as flat fields in the message, rather than nesting
+  // another table into the buffer.
+  shard:ulong;
+  id:ulong;
+  sent_at_nanos:ulong;
+}
+
+// The protobuf version of this Ack has a repeated metadata field. However, this flatbuffer gRPC
+// service id a bidirectional stream, so a single message may result in multiple streaming Acks.
+// This is done to simplify the creation of the message flatbuffer.
+table Ack {
+  shard:ulong;
+  id:ulong;
+  sent_at_nanos:ulong;
+}
+
+rpc_service MessageWriter {
+  WriteMessage(Message):Ack (streaming: "bidi");
+}
+ 
+root_type Message;

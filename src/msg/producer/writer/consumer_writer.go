@@ -47,12 +47,13 @@ var (
 	u                    uninitializedReadWriter
 )
 
+// @tallen this is the thing to override!
 type consumerWriter interface {
 	// Address returns the consumer address.
 	Address() string
 
 	// Write writes the bytes, it is thread safe per connection index.
-	Write(connIndex int, b []byte) error
+	Write(connIndex int, b []byte, m *message) error
 
 	// Init initializes the consumer writer.
 	Init()
@@ -193,7 +194,7 @@ func (w *consumerWriterImpl) Address() string {
 
 // Write should fail fast so that the write could be tried on other
 // consumer writers that are sharing the message queue.
-func (w *consumerWriterImpl) Write(connIndex int, b []byte) error {
+func (w *consumerWriterImpl) Write(connIndex int, b []byte, m *message) error {
 	w.writeState.RLock()
 	if !w.writeState.validConns || len(w.writeState.conns) == 0 {
 		w.writeState.RUnlock()
