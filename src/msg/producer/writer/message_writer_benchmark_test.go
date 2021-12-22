@@ -23,6 +23,7 @@ package writer
 import (
 	"testing"
 
+	"github.com/m3db/m3/src/msg/generated/proto/msgpb"
 	"github.com/m3db/m3/src/msg/producer"
 	"github.com/m3db/m3/src/x/instrument"
 )
@@ -65,7 +66,7 @@ func BenchmarkScanMessageQueue(b *testing.B) {
 
 type noopWriter struct{}
 
-func (noopWriter) Address() string         { return "" }
-func (noopWriter) Write(int, []byte) error { return nil }
-func (noopWriter) Init()                   {}
-func (noopWriter) Close()                  {}
+func (noopWriter) Address() string                         { return "" }
+func (noopWriter) Write(int, []byte, *msgpb.Message) error { return nil }
+func (noopWriter) Init()                                   {}
+func (noopWriter) Close()                                  {}

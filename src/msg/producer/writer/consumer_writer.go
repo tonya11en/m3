@@ -53,7 +53,7 @@ type consumerWriter interface {
 	Address() string
 
 	// Write writes the bytes, it is thread safe per connection index.
-	Write(connIndex int, b []byte, m *message) error
+	Write(connIndex int, b []byte, m *msgpb.Message) error
 
 	// Init initializes the consumer writer.
 	Init()
@@ -144,8 +144,18 @@ func newConsumerWriter(
 	opts Options,
 	m consumerWriterMetrics,
 ) consumerWriter {
+
 	if opts == nil {
 		opts = NewOptions()
+	}
+
+	// TODO @tallen: just gonna hack this in here to get the ball rolling.
+	if opts.UseGRPC() {
+		grpcWriter, err := newGRPCConsumerWriter(addr, opts)
+		if err != nil {
+			panic(err.Error())
+		}
+		return grpcWriter
 	}
 
 	connOpts := opts.ConnectionOptions()
@@ -194,7 +204,7 @@ func (w *consumerWriterImpl) Address() string {
 
 // Write should fail fast so that the write could be tried on other
 // consumer writers that are sharing the message queue.
-func (w *consumerWriterImpl) Write(connIndex int, b []byte, m *message) error {
+func (w *consumerWriterImpl) Write(connIndex int, b []byte, m *msgpb.Message) error {
 	w.writeState.RLock()
 	if !w.writeState.validConns || len(w.writeState.conns) == 0 {
 		w.writeState.RUnlock()

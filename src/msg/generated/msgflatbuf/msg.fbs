@@ -1,6 +1,70 @@
 // Message... TODO
  
 namespace msgflatbuf;
+
+union Metric { 
+}
+
+// The metric types below are flattened out as much as possible to make their creation easier.
+// Nested tables not only incur a performance penalty, but are also quite verbose to create.
+
+table Metric {
+  id:[byte];
+  annotation:[byte];
+  type:int;
+  time_nanos:long;
+  value:double;
+
+  // Storage policy.
+  storage_policy_window:long;
+  storage_policy_precision:ushort;
+  storage_policy_retention:long;
+}
+
+table ChunkedMetric {
+  id_prefix:[byte];
+  id_data:[byte];
+  id_suffix:[byte];
+  annotation:[byte];
+  time_nanos:long;
+  value:double;
+
+  // Storage policy.
+  storage_policy_window:long;
+  storage_policy_precision:ushort;
+  storage_policy_retention:long;
+}
+
+table ForwardedMetric {
+  id:[byte];
+  values:[double];
+  prev_values:[double];
+  annotation:[byte]; 
+  type:int;
+  time_nanos:long;
+  version:uint;
+
+  // Metadata.
+  aggregation_id:[ulong];
+  num_forwarded_times:int;
+  source_id:uint;
+  resend_enabled:bool;
+
+  // Storage policy.
+  storage_policy_window:long;
+  storage_policy_precision:ushort;
+  storage_policy_retention:long;
+
+  op_unions:[OpUnion];
+}
+
+struct OpUnion {
+  rollup_op_id:[byte];
+  rollup_op_aggregation_id:[ulong];
+  type:int;
+  transformation_op_type:int;
+}
+
  
 table Message {
   value:[byte];

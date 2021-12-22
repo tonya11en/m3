@@ -52,6 +52,8 @@ const (
 	defaultConnectionBufferSize = 2 << 15 // ~65kb
 
 	defaultWriterRetryInitialBackoff = time.Second * 5
+
+	defaultGRPCConsumerWriters = false
 )
 
 // ConnectionOptions configs the connections.
@@ -372,6 +374,10 @@ type Options interface {
 
 	// SetWithoutConsumerScope sets the value for WithoutConsumerScope.
 	SetWithoutConsumerScope(value bool) Options
+
+	// Whether to use gRPC consumer writers.
+	UseGRPC() bool
+	SetUseGRPC(useGRPC bool)
 }
 
 type writerOptions struct {
@@ -395,6 +401,7 @@ type writerOptions struct {
 	iOpts                             instrument.Options
 	ignoreCutoffCutover               bool
 	withoutConsumerScope              bool
+	useGRPC                           bool
 }
 
 // NewOptions creates Options.
@@ -416,6 +423,7 @@ func NewOptions() Options {
 		decOpts:                           proto.NewOptions(),
 		cOpts:                             NewConnectionOptions(),
 		iOpts:                             instrument.NewOptions(),
+		useGRPC:                           defaultGRPCConsumerWriters,
 	}
 }
 
@@ -617,4 +625,12 @@ func (opts *writerOptions) SetWithoutConsumerScope(value bool) Options {
 	o := *opts
 	o.withoutConsumerScope = value
 	return &o
+}
+
+func (opts *writerOptions) SetUseGRPC(useGRPC bool) {
+	opts.useGRPC = useGRPC
+}
+
+func (opts *writerOptions) UseGRPC() bool {
+	return opts.useGRPC
 }

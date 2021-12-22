@@ -450,10 +450,10 @@ func testConsumerWriterMetrics() consumerWriterMetrics {
 	return newConsumerWriterMetrics(tally.NoopScope)
 }
 
-func write(w consumerWriter, m proto.Marshaler) error {
+func write(w consumerWriter, m *msgpb.Message) error {
 	err := testEncoder.Encode(m)
 	if err != nil {
 		return err
 	}
-	return w.Write(0, testEncoder.Bytes())
+	return w.Write(0, testEncoder.Bytes(), m)
 }
