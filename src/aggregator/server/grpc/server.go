@@ -174,6 +174,9 @@ func (s *server) processWriteMessage(msg *msgflatbuf.Message) {
 	buf := getBuffer()
 	defer returnBuffer(buf)
 
-	//	s.aggregator.
+	if msg.ValueType() != msgflatbuf.MessageValueCounterWithMetadatas {
+		panic("@tallen not implemented yet..")
+	}
 
+	fmt.Printf("@tallen HANDLER CALL: shard=%d, type=%s\n", msg.Shard(), msg.ValueType().String())
 }

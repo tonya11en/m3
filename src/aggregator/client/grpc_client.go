@@ -179,7 +179,17 @@ func (m *flatbufMessage) Encode(
 			msgflatbuf.CounterWithMetadatasAddAnnotation(m.builder, annotationOffset)
 			msgflatbuf.CounterWithMetadatasAddId(m.builder, idOffset)
 			msgflatbuf.CounterWithMetadatasAddValue(m.builder, payload.untimed.metric.CounterVal)
-			fin := msgflatbuf.CounterWithMetadatasEnd(m.builder)
+			valOffset := msgflatbuf.CounterWithMetadatasEnd(m.builder)
+
+			msgflatbuf.MessageStart(m.builder)
+			// omitting message ID..
+			msgflatbuf.MessageAddValue(m.builder, valOffset)
+			msgflatbuf.MessageAddValueType(m.builder, msgflatbuf.MessageValueCounterWithMetadatas)
+			// this is probably wrong
+			msgflatbuf.MessageAddSentAtNanos(m.builder, uint64(payload.untimed.metric.ClientTimeNanos))
+			msgflatbuf.MessageAddShard(m.builder, uint64(shard))
+			fin := msgflatbuf.MessageEnd(m.builder)
+
 			m.builder.Finish(fin)
 
 		case metric.TimerType:

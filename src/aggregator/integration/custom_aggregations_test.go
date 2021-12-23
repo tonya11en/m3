@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 // Copyright (c) 2016 Uber Technologies, Inc.
@@ -31,6 +32,7 @@ import (
 
 	"github.com/m3db/m3/src/cluster/placement"
 	"github.com/m3db/m3/src/metrics/aggregation"
+	"github.com/m3db/m3/src/metrics/metric"
 	"github.com/m3db/m3/src/metrics/metric/aggregated"
 )
 
@@ -127,7 +129,7 @@ func testCustomAggregations(t *testing.T, metadataFns [4]metadataFn) {
 			interval:     interval,
 			ids:          ids,
 			category:     untimedMetric,
-			typeFn:       roundRobinMetricTypeFn,
+			typeFn:       constantMetricTypeFnFactory(metric.CounterType), // @tallen hacking this for demo
 			valueGenOpts: defaultValueGenOpts,
 			metadataFn:   metadataFns[0],
 		}),
@@ -137,7 +139,7 @@ func testCustomAggregations(t *testing.T, metadataFns [4]metadataFn) {
 			interval:     interval,
 			ids:          ids,
 			category:     untimedMetric,
-			typeFn:       roundRobinMetricTypeFn,
+			typeFn:       constantMetricTypeFnFactory(metric.CounterType), // @tallen hacking this for demo
 			valueGenOpts: defaultValueGenOpts,
 			metadataFn:   metadataFns[1],
 		}),
@@ -147,7 +149,7 @@ func testCustomAggregations(t *testing.T, metadataFns [4]metadataFn) {
 			interval:     interval,
 			ids:          ids,
 			category:     untimedMetric,
-			typeFn:       roundRobinMetricTypeFn,
+			typeFn:       constantMetricTypeFnFactory(metric.CounterType), // @tallen hacking this for demo
 			valueGenOpts: defaultValueGenOpts,
 			metadataFn:   metadataFns[2],
 		}),
@@ -157,7 +159,7 @@ func testCustomAggregations(t *testing.T, metadataFns [4]metadataFn) {
 			interval:     interval,
 			ids:          ids,
 			category:     untimedMetric,
-			typeFn:       roundRobinMetricTypeFn,
+			typeFn:       constantMetricTypeFnFactory(metric.CounterType), // @tallen hacking this for demo
 			valueGenOpts: defaultValueGenOpts,
 			metadataFn:   metadataFns[3],
 		}),

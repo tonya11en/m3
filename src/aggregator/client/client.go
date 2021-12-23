@@ -105,7 +105,8 @@ func NewClient(opts Options) (Client, error) {
 	clientType := opts.AggregatorClientType()
 	switch clientType {
 	case M3MsgAggregatorClient:
-		return NewM3MsgClient(opts)
+		// @tallen
+		return NewGRPCClient(opts)
 	case LegacyAggregatorClient:
 		fallthrough // LegacyAggregatorClient is an alias
 	case TCPAggregatorClient:
