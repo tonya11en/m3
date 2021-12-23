@@ -16,6 +16,9 @@ const (
 	MessageValueTimedMetricWithMetadata           MessageValue = 6
 	MessageValueTimedMetricWithMetadatas          MessageValue = 7
 	MessageValuePassthroughMetricWithMetadata     MessageValue = 8
+	MessageValueCounterWithMetadatas              MessageValue = 9
+	MessageValueGaugeWithMetadatas                MessageValue = 10
+	MessageValueBatchTimerWithMetadatas           MessageValue = 11
 )
 
 var EnumNamesMessageValue = map[MessageValue]string{
@@ -28,6 +31,9 @@ var EnumNamesMessageValue = map[MessageValue]string{
 	MessageValueTimedMetricWithMetadata:           "TimedMetricWithMetadata",
 	MessageValueTimedMetricWithMetadatas:          "TimedMetricWithMetadatas",
 	MessageValuePassthroughMetricWithMetadata:     "PassthroughMetricWithMetadata",
+	MessageValueCounterWithMetadatas:              "CounterWithMetadatas",
+	MessageValueGaugeWithMetadatas:                "GaugeWithMetadatas",
+	MessageValueBatchTimerWithMetadatas:           "BatchTimerWithMetadatas",
 }
 
 var EnumValuesMessageValue = map[string]MessageValue{
@@ -40,6 +46,9 @@ var EnumValuesMessageValue = map[string]MessageValue{
 	"TimedMetricWithMetadata":           MessageValueTimedMetricWithMetadata,
 	"TimedMetricWithMetadatas":          MessageValueTimedMetricWithMetadatas,
 	"PassthroughMetricWithMetadata":     MessageValuePassthroughMetricWithMetadata,
+	"CounterWithMetadatas":              MessageValueCounterWithMetadatas,
+	"GaugeWithMetadatas":                MessageValueGaugeWithMetadatas,
+	"BatchTimerWithMetadatas":           MessageValueBatchTimerWithMetadatas,
 }
 
 func (v MessageValue) String() string {

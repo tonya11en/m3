@@ -11,10 +11,17 @@ union MessageValue {
   TimedMetricWithMetadata,
   TimedMetricWithMetadatas,
   PassthroughMetricWithMetadata,
+  CounterWithMetadatas,
+  GaugeWithMetadatas,
+  BatchTimerWithMetadatas,
 }
 
 table Message {
+  // This will go unused for now...
   value:MessageValue;
+
+  // This is simply whatever would be in the m3msg buffer.
+  msg_value:[byte];
 
   // We choose to embed the message metadata as flat fields in the message, rather than nesting
   // another table into the buffer.
@@ -87,7 +94,7 @@ table PassthroughMetricWithMetadata {
 //---------------------------------------------------------------------------------------------------- 
 table CounterWithMetadatas {
   id:string;
-  annotation:string;
+  annotation:[byte];
   value:long;
   client_time_nanos:long;
   metadatas:[StagedMetadata];
@@ -95,7 +102,7 @@ table CounterWithMetadatas {
 
 table GaugeWithMetadatas {
   id:string;
-  annotation:string;
+  annotation:[byte];
   value:double;
   client_time_nanos:long;
   metadatas:[StagedMetadata];
@@ -103,7 +110,7 @@ table GaugeWithMetadatas {
 
 table BatchTimerWithMetadatas {
   id:string;
-  annotation:string;
+  annotation:[byte];
   values:[double];
   client_time_nanos:long;
   metadatas:[StagedMetadata];

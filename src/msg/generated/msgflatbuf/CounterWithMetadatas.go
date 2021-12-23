@@ -34,12 +34,30 @@ func (rcv *CounterWithMetadatas) Id() []byte {
 	return nil
 }
 
-func (rcv *CounterWithMetadatas) Annotation() []byte {
+func (rcv *CounterWithMetadatas) Annotation(j int) int8 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
-		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+		a := rcv._tab.Vector(o)
+		return rcv._tab.GetInt8(a + flatbuffers.UOffsetT(j*1))
 	}
-	return nil
+	return 0
+}
+
+func (rcv *CounterWithMetadatas) AnnotationLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *CounterWithMetadatas) MutateAnnotation(j int, n int8) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateInt8(a+flatbuffers.UOffsetT(j*1), n)
+	}
+	return false
 }
 
 func (rcv *CounterWithMetadatas) Value() int64 {
@@ -94,6 +112,9 @@ func CounterWithMetadatasAddId(builder *flatbuffers.Builder, id flatbuffers.UOff
 }
 func CounterWithMetadatasAddAnnotation(builder *flatbuffers.Builder, annotation flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(annotation), 0)
+}
+func CounterWithMetadatasStartAnnotationVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(1, numElems, 1)
 }
 func CounterWithMetadatasAddValue(builder *flatbuffers.Builder, value int64) {
 	builder.PrependInt64Slot(2, value, 0)

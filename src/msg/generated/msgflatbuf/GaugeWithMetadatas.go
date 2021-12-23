@@ -34,12 +34,30 @@ func (rcv *GaugeWithMetadatas) Id() []byte {
 	return nil
 }
 
-func (rcv *GaugeWithMetadatas) Annotation() []byte {
+func (rcv *GaugeWithMetadatas) Annotation(j int) int8 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
-		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+		a := rcv._tab.Vector(o)
+		return rcv._tab.GetInt8(a + flatbuffers.UOffsetT(j*1))
 	}
-	return nil
+	return 0
+}
+
+func (rcv *GaugeWithMetadatas) AnnotationLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *GaugeWithMetadatas) MutateAnnotation(j int, n int8) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateInt8(a+flatbuffers.UOffsetT(j*1), n)
+	}
+	return false
 }
 
 func (rcv *GaugeWithMetadatas) Value() float64 {
@@ -94,6 +112,9 @@ func GaugeWithMetadatasAddId(builder *flatbuffers.Builder, id flatbuffers.UOffse
 }
 func GaugeWithMetadatasAddAnnotation(builder *flatbuffers.Builder, annotation flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(annotation), 0)
+}
+func GaugeWithMetadatasStartAnnotationVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(1, numElems, 1)
 }
 func GaugeWithMetadatasAddValue(builder *flatbuffers.Builder, value float64) {
 	builder.PrependFloat64Slot(2, value, 0.0)

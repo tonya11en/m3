@@ -34,12 +34,30 @@ func (rcv *BatchTimerWithMetadatas) Id() []byte {
 	return nil
 }
 
-func (rcv *BatchTimerWithMetadatas) Annotation() []byte {
+func (rcv *BatchTimerWithMetadatas) Annotation(j int) int8 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
-		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+		a := rcv._tab.Vector(o)
+		return rcv._tab.GetInt8(a + flatbuffers.UOffsetT(j*1))
 	}
-	return nil
+	return 0
+}
+
+func (rcv *BatchTimerWithMetadatas) AnnotationLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *BatchTimerWithMetadatas) MutateAnnotation(j int, n int8) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateInt8(a+flatbuffers.UOffsetT(j*1), n)
+	}
+	return false
 }
 
 func (rcv *BatchTimerWithMetadatas) Values(j int) float64 {
@@ -108,6 +126,9 @@ func BatchTimerWithMetadatasAddId(builder *flatbuffers.Builder, id flatbuffers.U
 }
 func BatchTimerWithMetadatasAddAnnotation(builder *flatbuffers.Builder, annotation flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(annotation), 0)
+}
+func BatchTimerWithMetadatasStartAnnotationVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(1, numElems, 1)
 }
 func BatchTimerWithMetadatasAddValues(builder *flatbuffers.Builder, values flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(values), 0)

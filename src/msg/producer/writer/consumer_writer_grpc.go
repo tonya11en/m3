@@ -180,12 +180,15 @@ func (w *gRPCConsumerWriter) Write(i int, buf []byte, m *msgpb.Message) error {
 	b := getBuilder()
 	defer returnBuilder(b)
 
+	// TODO: we need to pass through a builder all the way form the clients to actually do something
+	// with it in an envoy. For now, I'm just dumping the proto in a flatbuffer type.
+
 	valOffset := b.CreateByteVector(buf)
 
 	msgflatbuf.MessageStart(b)
 	msgflatbuf.MessageAddId(b, m.Metadata.Id)
 	msgflatbuf.MessageAddShard(b, m.GetMetadata().Shard)
-	msgflatbuf.MessageAddValue(b, valOffset)
+	msgflatbuf.MessageAddMsgValue(b, valOffset)
 	now := time.Now().UnixNano()
 	msgflatbuf.MessageAddSentAtNanos(b, uint64(now))
 	offset := msgflatbuf.MessageEnd(b)

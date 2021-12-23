@@ -47,19 +47,33 @@ func (rcv *Message) Value(obj *flatbuffers.Table) bool {
 	return false
 }
 
-func (rcv *Message) Shard() uint64 {
+func (rcv *Message) MsgValue(j int) int8 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
 	if o != 0 {
-		return rcv._tab.GetUint64(o + rcv._tab.Pos)
+		a := rcv._tab.Vector(o)
+		return rcv._tab.GetInt8(a + flatbuffers.UOffsetT(j*1))
 	}
 	return 0
 }
 
-func (rcv *Message) MutateShard(n uint64) bool {
-	return rcv._tab.MutateUint64Slot(8, n)
+func (rcv *Message) MsgValueLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
 }
 
-func (rcv *Message) Id() uint64 {
+func (rcv *Message) MutateMsgValue(j int, n int8) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateInt8(a+flatbuffers.UOffsetT(j*1), n)
+	}
+	return false
+}
+
+func (rcv *Message) Shard() uint64 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
 	if o != 0 {
 		return rcv._tab.GetUint64(o + rcv._tab.Pos)
@@ -67,11 +81,11 @@ func (rcv *Message) Id() uint64 {
 	return 0
 }
 
-func (rcv *Message) MutateId(n uint64) bool {
+func (rcv *Message) MutateShard(n uint64) bool {
 	return rcv._tab.MutateUint64Slot(10, n)
 }
 
-func (rcv *Message) SentAtNanos() uint64 {
+func (rcv *Message) Id() uint64 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
 	if o != 0 {
 		return rcv._tab.GetUint64(o + rcv._tab.Pos)
@@ -79,12 +93,24 @@ func (rcv *Message) SentAtNanos() uint64 {
 	return 0
 }
 
-func (rcv *Message) MutateSentAtNanos(n uint64) bool {
+func (rcv *Message) MutateId(n uint64) bool {
 	return rcv._tab.MutateUint64Slot(12, n)
 }
 
+func (rcv *Message) SentAtNanos() uint64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
+	if o != 0 {
+		return rcv._tab.GetUint64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *Message) MutateSentAtNanos(n uint64) bool {
+	return rcv._tab.MutateUint64Slot(14, n)
+}
+
 func MessageStart(builder *flatbuffers.Builder) {
-	builder.StartObject(5)
+	builder.StartObject(6)
 }
 func MessageAddValueType(builder *flatbuffers.Builder, valueType MessageValue) {
 	builder.PrependByteSlot(0, byte(valueType), 0)
@@ -92,14 +118,20 @@ func MessageAddValueType(builder *flatbuffers.Builder, valueType MessageValue) {
 func MessageAddValue(builder *flatbuffers.Builder, value flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(value), 0)
 }
+func MessageAddMsgValue(builder *flatbuffers.Builder, msgValue flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(msgValue), 0)
+}
+func MessageStartMsgValueVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(1, numElems, 1)
+}
 func MessageAddShard(builder *flatbuffers.Builder, shard uint64) {
-	builder.PrependUint64Slot(2, shard, 0)
+	builder.PrependUint64Slot(3, shard, 0)
 }
 func MessageAddId(builder *flatbuffers.Builder, id uint64) {
-	builder.PrependUint64Slot(3, id, 0)
+	builder.PrependUint64Slot(4, id, 0)
 }
 func MessageAddSentAtNanos(builder *flatbuffers.Builder, sentAtNanos uint64) {
-	builder.PrependUint64Slot(4, sentAtNanos, 0)
+	builder.PrependUint64Slot(5, sentAtNanos, 0)
 }
 func MessageEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()
