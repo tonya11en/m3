@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	bufferInitialCapacity = 2048
+	bufferInitialCapacity = 4096
 )
 
 var (

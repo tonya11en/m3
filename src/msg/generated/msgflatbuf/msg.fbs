@@ -2,11 +2,26 @@
  
 namespace msgflatbuf;
 
-union Metric { 
+union MessageValue { 
+  Metric,
+  ChunkedMetric,
+  AggregatedMetricWithStoragePolicy,
+  ChunkedMetricWithStoragePolicy,
+  ForwardedMetricWithMetadata,
+  TimedMetricWithMetadata,
+  TimedMetricWithMetadatas,
+  PassthroughMetricWithMetadata,
 }
 
-// The metric types below are flattened out as much as possible to make their creation easier.
-// Nested tables not only incur a performance penalty, but are also quite verbose to create.
+table Message {
+  value:MessageValue;
+
+  // We choose to embed the message metadata as flat fields in the message, rather than nesting
+  // another table into the buffer.
+  shard:ulong;
+  id:ulong;
+  sent_at_nanos:ulong;
+}
 
 table Metric {
   id:[byte];
@@ -14,11 +29,6 @@ table Metric {
   type:int;
   time_nanos:long;
   value:double;
-
-  // Storage policy.
-  storage_policy_window:long;
-  storage_policy_precision:ushort;
-  storage_policy_retention:long;
 }
 
 table ChunkedMetric {
@@ -28,14 +38,19 @@ table ChunkedMetric {
   annotation:[byte];
   time_nanos:long;
   value:double;
-
-  // Storage policy.
-  storage_policy_window:long;
-  storage_policy_precision:ushort;
-  storage_policy_retention:long;
 }
 
-table ForwardedMetric {
+table AggregatedMetricWithStoragePolicy {
+  metric:Metric;
+  storage_policy:StoragePolicy;
+}
+
+table ChunkedMetricWithStoragePolicy {
+  chunked_metric:ChunkedMetric;
+  storage_policy:StoragePolicy;
+}
+
+table ForwardedMetricWithMetadata {
   id:[byte];
   values:[double];
   prev_values:[double];
@@ -43,45 +58,139 @@ table ForwardedMetric {
   type:int;
   time_nanos:long;
   version:uint;
+  metadata:ForwardedMetadata;
+}
 
-  // Metadata.
+table TimedMetric {
+  id:[byte];
+  annotation:[byte];
+  type:int;
+  time_nanos:long;
+  value:double;
+}
+
+table TimedMetricWithMetadata {
+  metric:Metric;
+  metadata:TimedMetadata;
+}
+
+table TimedMetricWithMetadatas {
+  metric:Metric;
+  staged_metadatas:[StagedMetadata];
+}
+
+table PassthroughMetricWithMetadata {
+  metric:Metric;
+  storage_policy:StoragePolicy;
+}
+
+//---------------------------------------------------------------------------------------------------- 
+table CounterWithMetadatas {
+  id:string;
+  annotation:string;
+  value:long;
+  client_time_nanos:long;
+  metadatas:[StagedMetadata];
+}
+
+table GaugeWithMetadatas {
+  id:string;
+  annotation:string;
+  value:double;
+  client_time_nanos:long;
+  metadatas:[StagedMetadata];
+}
+
+table BatchTimerWithMetadatas {
+  id:string;
+  annotation:string;
+  values:[double];
+  client_time_nanos:long;
+  metadatas:[StagedMetadata];
+}
+
+
+//----------------------------------------------------------------------------------------------------
+
+table ForwardedMetadata {
+  pipeline:Pipeline;
+  storage_policy:StoragePolicy;
   aggregation_id:[ulong];
   num_forwarded_times:int;
   source_id:uint;
   resend_enabled:bool;
-
-  // Storage policy.
-  storage_policy_window:long;
-  storage_policy_precision:ushort;
-  storage_policy_retention:long;
-
-  op_unions:[OpUnion];
 }
 
-struct OpUnion {
-  rollup_op_id:[byte];
-  rollup_op_aggregation_id:[ulong];
+struct Resolution {
+  window:long;
+  precision:long;
+}
+
+table StoragePolicy {
+  resolution:Resolution;
+  retention:long;
+}
+
+table RollupOp {
+  id:string;
+  aggregation_id:[ulong];
+}
+
+table TransformationOp {
   type:int;
-  transformation_op_type:int;
+}
+
+table Pipeline {
+  operations:[OpUnion];
+}
+
+table OpUnion {
+  rollup:RollupOp;
+  type:int;
+  transformation:TransformationOp;
+}
+
+table Tag {
+  name:string;
+  value:string;
+}
+
+table GraphitePrefix {
+  prefix:string;
+}
+
+table PipelineMetadata {
+  storage_policies:[StoragePolicy];
+  pipeline:Pipeline;
+  tags:[Tag];
+  graphite_prefix:[GraphitePrefix];
+  aggregation_id:[ulong];
+  drop_policy:uint;
+  resend_enabled:bool;
+}
+
+table Metadata {
+  pipelines:[PipelineMetadata];
+}
+
+table StagedMetadata {
+  metadata:Metadata;
+  cutover_nanos:long;
+  tombstoned:bool;
+}
+
+table TimedMetadata {
+  aggregation_id:[ulong];
+  storage_policy:[StoragePolicy];
 }
 
  
-table Message {
-  value:[byte];
-
-  // We choose to embed the message metadata as flat fields in the message, rather than nesting
-  // another table into the buffer.
-  shard:ulong;
-  id:ulong;
-  sent_at_nanos:ulong;
-}
-
 // The protobuf version of this Ack has a repeated metadata field. However, this flatbuffer gRPC
 // service id a bidirectional stream, so a single message may result in multiple streaming Acks.
 // This is done to simplify the creation of the message flatbuffer.
 table Ack {
   shard:ulong;
-  id:ulong;
+  id:[byte];
   sent_at_nanos:ulong;
 }
 

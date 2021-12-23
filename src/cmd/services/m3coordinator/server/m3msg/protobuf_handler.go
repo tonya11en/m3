@@ -51,7 +51,7 @@ type handlerMetrics struct {
 func newHandlerMetrics(scope tally.Scope) handlerMetrics {
 	messageScope := scope.SubScope("metric")
 	return handlerMetrics{
-		metricAccepted:   messageScope.Counter("accepted"),
+		metricAccepted: messageScope.Counter("accepted"),
 		droppedMetricDecodeError: messageScope.Tagged(map[string]string{
 			"reason": "decode-error",
 		}).Counter("dropped"),
@@ -127,14 +127,14 @@ func (h *pbHandler) Close() { h.wg.Wait() }
 
 type protobufCallback struct {
 	msg consumer.Message
-	dec *protobuf.AggregatedDecoder
+	dec protobuf.AggregatedDecoder
 	wg  *sync.WaitGroup
 }
 
 // NewProtobufCallback creates a callbackable.
 func NewProtobufCallback(
 	msg consumer.Message,
-	dec *protobuf.AggregatedDecoder,
+	dec protobuf.AggregatedDecoder,
 	wg *sync.WaitGroup,
 ) Callbackable {
 	return &protobufCallback{

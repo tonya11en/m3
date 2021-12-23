@@ -90,18 +90,6 @@ func NewServer(address string, aggregator aggregator.Aggregator) (*server, error
 	return &s, nil
 }
 
-// Fetches a flatbuffer builder from the pool if one is available, otherwise a new one will be
-// allocated and returned. The builders returned are already reset.
-func getBuilder() *flatbuffers.Builder {
-	return builderPool.Get().(*flatbuffers.Builder)
-}
-
-// Resets and returns a builder to the pool that has no further use.
-func returnBuilder(b *flatbuffers.Builder) {
-	b.Reset()
-	builderPool.Put(b)
-}
-
 func getMessageUnion() *encoding.UnaggregatedMessageUnion {
 	return messageUnionPool.Get().(*encoding.UnaggregatedMessageUnion)
 }
@@ -186,15 +174,6 @@ func (s *server) processWriteMessage(msg *msgflatbuf.Message) {
 	buf := getBuffer()
 	defer returnBuffer(buf)
 
-	for i := 0; i < msg.ValueLength(); i++ {
-		buf = append(buf, byte(msg.Value(i)))
-	}
+	//	s.aggregator.do stuff
 
-	msgProto := getMessageProto()
-	defer returnMessageProto(msgProto)
-
-	err := msgProto.Unmarshal(buf)
-	if err != nil {
-		fmt.Printf("error unmarshaling proto: %s\n", err.Error())
-	}
 }

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/m3db/m3/src/aggregator/aggregator"
+	grpcserver "github.com/m3db/m3/src/aggregator/server/grpc"
 	httpserver "github.com/m3db/m3/src/aggregator/server/http"
 	m3msgserver "github.com/m3db/m3/src/aggregator/server/m3msg"
 	rawtcpserver "github.com/m3db/m3/src/aggregator/server/rawtcp"
@@ -110,6 +111,28 @@ func Serve(
 		}()
 
 		log.Info("http server listening", zap.String("addr", httpAddr))
+	}
+
+	// todo @tallen don't hardcode
+	TODO_HARDCODED_ADDRESS := "localhost:13370"
+	if grpcAddr := TODO_HARDCODED_ADDRESS; grpcAddr != "" {
+		//		grpcOpts := opts.gRPCOpts()
+		grpcServer, err := grpcserver.NewServer(grpcAddr, aggregator)
+		if err != nil {
+			return fmt.Errorf("could not create gRPC server: addr=%s, err=%v", grpcAddr, err)
+		}
+		if err := grpcServer.ListenAndServe(); err != nil {
+			return fmt.Errorf("could not start gRPC server at: addr=%s, err=%v", grpcAddr, err)
+		}
+
+		defer func() {
+			start := time.Now()
+			closeLogger.Info("closing gRPC server")
+			grpcServer.Close()
+			closeLogger.Info("gRPC server closed", zap.String("took", time.Since(start).String()))
+		}()
+
+		log.Info("gRPC server listening", zap.String("addr", grpcAddr))
 	}
 
 	// Wait for exit signal.

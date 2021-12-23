@@ -36,7 +36,7 @@ type AggregatedEncoder interface {
 	Buffer() Buffer
 }
 
-type aggregatedEncoder struct {
+type aggregatedEncoderPb struct {
 	pool pool.BytesPool
 	buf  []byte
 	pb   metricpb.AggregatedMetric
@@ -44,13 +44,13 @@ type aggregatedEncoder struct {
 
 // NewAggregatedEncoder creates a new aggregated encoder.
 func NewAggregatedEncoder(p pool.BytesPool) AggregatedEncoder {
-	e := &aggregatedEncoder{
+	e := &aggregatedEncoderPb{
 		pool: p,
 	}
 	return e
 }
 
-func (enc *aggregatedEncoder) Encode(
+func (enc *aggregatedEncoderPb) Encode(
 	m aggregated.MetricWithStoragePolicy,
 	encodedAtNanos int64,
 ) error {
@@ -66,7 +66,7 @@ func (enc *aggregatedEncoder) Encode(
 	return err
 }
 
-func (enc *aggregatedEncoder) Buffer() Buffer {
+func (enc *aggregatedEncoderPb) Buffer() Buffer {
 	var fn PoolReleaseFn
 	if enc.pool != nil {
 		fn = enc.pool.Put

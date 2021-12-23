@@ -20,6 +20,15 @@
 
 package client
 
+// @tallen -
+// @tallen -
+// @tallen -
+// @tallen -
+// @tallen -
+// @tallen -
+// want a copy of this thing that encodes flatbuffers and passes the builder down to the consumer
+// writer.
+
 import (
 	"fmt"
 	"sync"
@@ -41,6 +50,8 @@ import (
 )
 
 var _ AdminClient = (*M3MsgClient)(nil)
+
+// @tallen we want a message client like this!
 
 // M3MsgClient sends metrics to M3 Aggregator over m3msg.
 type M3MsgClient struct {

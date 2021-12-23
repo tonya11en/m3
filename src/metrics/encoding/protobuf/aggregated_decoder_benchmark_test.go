@@ -27,12 +27,19 @@ import (
 	"github.com/m3db/m3/src/metrics/policy"
 )
 
-func BenchmarkDecodeStoragePolicy(b *testing.B) {
-	var (
-		enc = NewAggregatedEncoder(nil)
-		dec = NewAggregatedDecoder(nil)
-		sp  policy.StoragePolicy
-	)
+func doBenchmarkEncode(b *testing.B, enc AggregatedEncoder, dec AggregatedDecoder) {
+	for i := 0; i < b.N; i++ {
+		if err := enc.Encode(testAggregatedMetric1, 2000); err != nil {
+			b.Fatal(err)
+		}
+
+		buf := enc.Buffer()
+		buf.Close()
+	}
+}
+
+func doBenchmarkDecodeStoragePolicy(b *testing.B, enc AggregatedEncoder, dec AggregatedDecoder) {
+	var sp policy.StoragePolicy
 	if err := enc.Encode(testAggregatedMetric1, 2000); err != nil {
 		b.Fatal(err)
 	}
@@ -46,4 +53,28 @@ func BenchmarkDecodeStoragePolicy(b *testing.B) {
 		dec.Close()
 	}
 	runtime.KeepAlive(sp)
+}
+
+func BenchmarkEncodeProtobuf(b *testing.B) {
+	enc := NewAggregatedEncoder(nil)
+	dec := NewAggregatedDecoder(nil)
+	doBenchmarkEncode(b, enc, dec)
+}
+
+func BenchmarkEncodeFlatbuf(b *testing.B) {
+	enc := NewAggregatedFlatbufEncoder()
+	dec := NewAggregatedFlatbufDecoder()
+	doBenchmarkEncode(b, enc, dec)
+}
+
+func BenchmarkDecodeStoragePolicyProtobuf(b *testing.B) {
+	enc := NewAggregatedEncoder(nil)
+	dec := NewAggregatedDecoder(nil)
+	doBenchmarkDecodeStoragePolicy(b, enc, dec)
+}
+
+func BenchmarkDecodeStoragePolicyFlatbuf(b *testing.B) {
+	enc := NewAggregatedFlatbufEncoder()
+	dec := NewAggregatedFlatbufDecoder()
+	doBenchmarkDecodeStoragePolicy(b, enc, dec)
 }

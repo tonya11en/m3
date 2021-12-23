@@ -44,6 +44,7 @@ func returnBuilder(b *flatbuffers.Builder) {
 
 type gRPCConsumerWriter struct {
 	ctx     context.Context
+	cancel  context.CancelFunc
 	client  msgflatbuf.MessageWriterClient
 	conn    *grpc.ClientConn
 	address string
@@ -53,7 +54,10 @@ type gRPCConsumerWriter struct {
 }
 
 func newGRPCConsumerWriter(addr string, opts Options) (*gRPCConsumerWriter, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	gclient := gRPCConsumerWriter{
+		ctx:           ctx,
+		cancel:        cancel,
 		address:       addr,
 		inboundWrites: make(chan *flatbuffers.Builder, reqStreamQueueSize),
 		inboundAcks:   make(chan *msgflatbuf.Ack, reqStreamQueueSize),
@@ -140,6 +144,9 @@ func (w *gRPCConsumerWriter) startStream(ctx context.Context) error {
 
 	for {
 		select {
+		case <-w.ctx.Done():
+			fmt.Printf("writer closing")
+			return nil
 		case <-stream.Context().Done():
 			fmt.Printf("stream context cancelled")
 			return nil
@@ -176,7 +183,7 @@ func (w *gRPCConsumerWriter) Write(i int, buf []byte, m *msgpb.Message) error {
 	valOffset := b.CreateByteVector(buf)
 
 	msgflatbuf.MessageStart(b)
-	msgflatbuf.MessageAddId(b, m.Metadata.GetId())
+	msgflatbuf.MessageAddId(b, m.Metadata.Id)
 	msgflatbuf.MessageAddShard(b, m.GetMetadata().Shard)
 	msgflatbuf.MessageAddValue(b, valOffset)
 	now := time.Now().UnixNano()
@@ -190,5 +197,4 @@ func (w *gRPCConsumerWriter) Write(i int, buf []byte, m *msgpb.Message) error {
 
 // Close closes the consumer writer.
 func (w *gRPCConsumerWriter) Close() {
-	// todo
 }

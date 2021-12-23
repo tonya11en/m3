@@ -51,9 +51,7 @@ var (
 	}
 )
 
-func TestAggregatedEncoderDecoder_RoundTrip(t *testing.T) {
-	enc := NewAggregatedEncoder(nil)
-	dec := NewAggregatedDecoder(nil)
+func doRoundTrip(t *testing.T, enc AggregatedEncoder, dec AggregatedDecoder) {
 	require.NoError(t, enc.Encode(testAggregatedMetric1, 2000))
 	require.NoError(t, dec.Decode(enc.Buffer().Bytes()))
 	require.Equal(t, int64(2000), dec.EncodeNanos())
@@ -62,6 +60,18 @@ func TestAggregatedEncoderDecoder_RoundTrip(t *testing.T) {
 	require.Equal(t, string(testAggregatedMetric1.ID), string(dec.ID()))
 	require.Equal(t, testAggregatedMetric1.TimeNanos, dec.TimeNanos())
 	require.Equal(t, testAggregatedMetric1.Value, dec.Value())
+}
+
+func TestAggregatedEncoderDecoder_RoundTrip(t *testing.T) {
+	enc := NewAggregatedEncoder(nil)
+	dec := NewAggregatedDecoder(nil)
+	doRoundTrip(t, enc, dec)
+}
+
+func TestAggregatedEncoderDecoder_RoundTripFlatbuf(t *testing.T) {
+	enc := NewAggregatedFlatbufEncoder()
+	dec := NewAggregatedFlatbufDecoder()
+	doRoundTrip(t, enc, dec)
 }
 
 func TestAggregatedEncoderDecoder_WithBytesPool(t *testing.T) {
@@ -83,9 +93,7 @@ func TestAggregatedEncoderDecoder_WithBytesPool(t *testing.T) {
 	require.Equal(t, testAggregatedMetric1.Value, dec.Value())
 }
 
-func TestAggregatedEncoderDecoder_ResetProtobuf(t *testing.T) {
-	enc := NewAggregatedEncoder(nil)
-	dec := NewAggregatedDecoder(nil)
+func doReset(t *testing.T, enc AggregatedEncoder, dec AggregatedDecoder) {
 	require.NoError(t, enc.Encode(testAggregatedMetric1, 2000))
 	require.NoError(t, dec.Decode(enc.Buffer().Bytes()))
 	require.Equal(t, int64(2000), dec.EncodeNanos())
@@ -107,4 +115,16 @@ func TestAggregatedEncoderDecoder_ResetProtobuf(t *testing.T) {
 	require.Equal(t, string(testAggregatedMetric2.ID), string(dec.ID()))
 	require.Equal(t, testAggregatedMetric2.TimeNanos, dec.TimeNanos())
 	require.Equal(t, testAggregatedMetric2.Value, dec.Value())
+}
+
+func TestAggregatedEncoderDecoder_Reset(t *testing.T) {
+	enc := NewAggregatedEncoder(nil)
+	dec := NewAggregatedDecoder(nil)
+	doReset(t, enc, dec)
+}
+
+func TestAggregatedEncoderDecoder_ResetFlatbuf(t *testing.T) {
+	enc := NewAggregatedFlatbufEncoder()
+	dec := NewAggregatedFlatbufDecoder()
+	doReset(t, enc, dec)
 }
