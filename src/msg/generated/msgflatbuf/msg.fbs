@@ -197,7 +197,7 @@ table TimedMetadata {
 // This is done to simplify the creation of the message flatbuffer.
 table Ack {
   shard:ulong;
-  id:[byte];
+  id:ulong;
   sent_at_nanos:ulong;
 }
 

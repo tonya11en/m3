@@ -79,10 +79,7 @@ func (w *sharedShardWriter) Write(rm *producer.RefCountedMessage) {
 }
 
 // This is not thread safe, must be called in one thread.
-func (w *sharedShardWriter) UpdateInstances(
-	instances []placement.Instance,
-	cws map[string]consumerWriter,
-) {
+func (w *sharedShardWriter) UpdateInstances(instances []placement.Instance, cws map[string]consumerWriter) {
 	var (
 		newInstancesMap = make(map[string]struct{}, len(instances))
 		toBeDeleted     = w.instances

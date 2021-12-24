@@ -9,7 +9,7 @@ import (
 
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/m3db/m3/src/msg/generated/msgflatbuf"
-	"github.com/m3db/m3/src/msg/generated/proto/msgpb"
+	"github.com/m3db/m3/src/msg/producer"
 	"google.golang.org/grpc"
 )
 
@@ -42,7 +42,7 @@ func returnBuilder(b *flatbuffers.Builder) {
 	builderPool.Put(b)
 }
 
-type gRPCConsumerWriter struct {
+type grpcStreamWriter struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	client  msgflatbuf.MessageWriterClient
@@ -53,11 +53,9 @@ type gRPCConsumerWriter struct {
 	inboundAcks   chan *msgflatbuf.Ack
 }
 
-func newGRPCConsumerWriter(addr string, opts Options) (*gRPCConsumerWriter, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	gclient := gRPCConsumerWriter{
+func newGRPCStreamWriter(ctx context.Context, addr string) (*grpcStreamWriter, error) {
+	gclient := grpcStreamWriter{
 		ctx:           ctx,
-		cancel:        cancel,
 		address:       addr,
 		inboundWrites: make(chan *flatbuffers.Builder, reqStreamQueueSize),
 		inboundAcks:   make(chan *msgflatbuf.Ack, reqStreamQueueSize),
@@ -70,7 +68,7 @@ func newGRPCConsumerWriter(addr string, opts Options) (*gRPCConsumerWriter, erro
 }
 
 // Init initializes the consumer writer.
-func (w *gRPCConsumerWriter) Init() {
+func (w *grpcStreamWriter) Init() {
 	fmt.Println("@tallen making grpc client. dialing")
 	dopts := []grpc.DialOption{
 		grpc.WithInsecure(),
@@ -101,14 +99,15 @@ func (w *gRPCConsumerWriter) Init() {
 			err := w.startStream(w.ctx)
 			if err != nil {
 				fmt.Printf("error encountered during stream: %s\n", err.Error())
-				// TODO: don't sleep
+				// TODO @tallen: don't sleep if we can help it.
 				time.Sleep(500 * time.Millisecond)
+				fmt.Printf("retrying stream establishment")
 			}
 		}
 	}()
 }
 
-func (w *gRPCConsumerWriter) receiveAcks(
+func (w *grpcStreamWriter) receiveAcks(
 	ctx context.Context,
 	stream msgflatbuf.MessageWriter_WriteMessageClient,
 	errChan chan error) {
@@ -129,7 +128,7 @@ func (w *gRPCConsumerWriter) receiveAcks(
 	}
 }
 
-func (w *gRPCConsumerWriter) startStream(ctx context.Context) error {
+func (w *grpcStreamWriter) startStream(ctx context.Context) error {
 	fmt.Printf("establishing message writer stream for %s\n", w.address)
 	defer fmt.Printf("stream terminated for %s\n", w.address)
 
@@ -171,33 +170,19 @@ func (w *gRPCConsumerWriter) startStream(ctx context.Context) error {
 }
 
 // Address returns the consumer address.
-func (w *gRPCConsumerWriter) Address() string {
+func (w *grpcStreamWriter) Address() string {
 	return w.address
 }
 
-// Write writes the bytes. The connection index doesn't matter for our purposes.
-func (w *gRPCConsumerWriter) Write(i int, buf []byte, m *msgpb.Message) error {
-	b := getBuilder()
-	defer returnBuilder(b)
-
-	// TODO: we need to pass through a builder all the way form the clients to actually do something
-	// with it in an envoy. For now, I'm just dumping the proto in a flatbuffer type.
-
-	valOffset := b.CreateByteVector(buf)
-
-	msgflatbuf.MessageStart(b)
-	msgflatbuf.MessageAddId(b, m.Metadata.Id)
-	msgflatbuf.MessageAddShard(b, m.GetMetadata().Shard)
-	msgflatbuf.MessageAddMsgValue(b, valOffset)
-	now := time.Now().UnixNano()
-	msgflatbuf.MessageAddSentAtNanos(b, uint64(now))
-	offset := msgflatbuf.MessageEnd(b)
-	b.Finish(offset)
-
-	w.inboundWrites <- b
-	return nil
+func (w *grpcStreamWriter) SendOnStream(msg *producer.RefCountedMessage) {
+	for {
+		select {
+		case <-w.ctx.Done():
+			fmt.Printf("stream writer halting ingest")
+		case w.inboundWrites <- msg:
+	}
 }
 
 // Close closes the consumer writer.
-func (w *gRPCConsumerWriter) Close() {
+func (w *grpcStreamWriter) Close() {
 }

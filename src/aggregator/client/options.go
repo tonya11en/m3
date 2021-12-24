@@ -46,6 +46,8 @@ const (
 	// TCP negotiation, load balancing and data transmission protocol.
 	TCPAggregatorClient
 
+	GRPCAggregatorClient
+
 	defaultAggregatorClient = LegacyAggregatorClient
 
 	defaultFlushWorkerCount = 64

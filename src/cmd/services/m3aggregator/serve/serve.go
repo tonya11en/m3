@@ -58,6 +58,24 @@ func Serve(
 		}
 	}()
 
+	if grpcAddr := opts.GRPCAddr(); grpcAddr != "" {
+		grpcServer, err := grpcserver.NewServer(grpcAddr, aggregator)
+		if err != nil {
+			return fmt.Errorf("could not create gRPC server: addr=%s, err=%v", grpcAddr, err)
+		}
+		log.Info("starting gRPC server", zap.String("addr", grpcAddr))
+		if err := grpcServer.ListenAndServe(); err != nil {
+			return fmt.Errorf("could not start gRPC server at: addr=%s, err=%v", grpcAddr, err)
+		}
+
+		defer func() {
+			start := time.Now()
+			closeLogger.Info("closing gRPC server")
+			grpcServer.Close()
+			closeLogger.Info("gRPC server closed", zap.String("took", time.Since(start).String()))
+		}()
+	}
+
 	if m3msgAddr := opts.M3MsgAddr(); m3msgAddr != "" {
 		serverOpts := opts.M3MsgServerOpts()
 		m3msgServer, err := m3msgserver.NewServer(m3msgAddr, aggregator, serverOpts)
@@ -111,28 +129,6 @@ func Serve(
 		}()
 
 		log.Info("http server listening", zap.String("addr", httpAddr))
-	}
-
-	// todo @tallen don't hardcode
-	TODO_HARDCODED_ADDRESS := "localhost:13370"
-	if grpcAddr := TODO_HARDCODED_ADDRESS; grpcAddr != "" {
-		//		grpcOpts := opts.gRPCOpts()
-		grpcServer, err := grpcserver.NewServer(grpcAddr, aggregator)
-		if err != nil {
-			return fmt.Errorf("could not create gRPC server: addr=%s, err=%v", grpcAddr, err)
-		}
-		if err := grpcServer.ListenAndServe(); err != nil {
-			return fmt.Errorf("could not start gRPC server at: addr=%s, err=%v", grpcAddr, err)
-		}
-
-		defer func() {
-			start := time.Now()
-			closeLogger.Info("closing gRPC server")
-			grpcServer.Close()
-			closeLogger.Info("gRPC server closed", zap.String("took", time.Since(start).String()))
-		}()
-
-		log.Info("gRPC server listening", zap.String("addr", grpcAddr))
 	}
 
 	// Wait for exit signal.

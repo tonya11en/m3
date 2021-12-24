@@ -21,6 +21,7 @@
 package serve
 
 import (
+	grpcserver "github.com/m3db/m3/src/aggregator/server/grpc"
 	httpserver "github.com/m3db/m3/src/aggregator/server/http"
 	m3msgserver "github.com/m3db/m3/src/aggregator/server/m3msg"
 	rawtcpserver "github.com/m3db/m3/src/aggregator/server/rawtcp"
@@ -66,6 +67,13 @@ type Options interface {
 	// HTTPServerOpts returns the HTTPServerOpts.
 	HTTPServerOpts() httpserver.Options
 
+	SetGRPCServerOpts(value grpcserver.Options)
+
+	GRPCServerOpts() grpcserver.Options
+
+	GRPCAddr() string
+	SetGRPCAddr(addr string)
+
 	// SetInstrumentOpts sets the InstrumentOpts.
 	SetInstrumentOpts(value instrument.Options) Options
 
@@ -82,6 +90,8 @@ type Options interface {
 type options struct {
 	m3msgAddr        string
 	m3msgServerOpts  m3msgserver.Options
+	grpcAddr         string
+	grpcServerOpts   grpcserver.Options
 	rawTCPAddr       string
 	rawTCPServerOpts rawtcpserver.Options
 	httpAddr         string
@@ -176,4 +186,20 @@ func (o *options) SetRWOptions(value xio.Options) Options {
 
 func (o *options) RWOptions() xio.Options {
 	return o.rwOpts
+}
+
+func (o *options) SetGRPCServerOpts(value grpcserver.Options) {
+	o.grpcServerOpts = value
+}
+
+func (o *options) GRPCServerOpts() grpcserver.Options {
+	return o.grpcServerOpts
+}
+
+func (o *options) GRPCAddr() string {
+	return o.grpcAddr
+}
+
+func (o *options) SetGRPCAddr(addr string) {
+	o.grpcAddr = addr
 }

@@ -67,6 +67,8 @@ type server struct {
 	activeRequestSem chan struct{}
 }
 
+type Options struct{}
+
 // TODO: add options
 // Returns a new gRPC aggregator server.
 func NewServer(address string, aggregator aggregator.Aggregator) (*server, error) {
@@ -165,11 +167,11 @@ func (s *server) WriteMessage(stream msgflatbuf.MessageWriter_WriteMessageServer
 		}
 
 		s.activeRequestSem <- struct{}{}
-		go s.processWriteMessage(msg)
+		go s.processWriteMessage(msg, stream)
 	}
 }
 
-func (s *server) processWriteMessage(msg *msgflatbuf.Message) {
+func (s *server) processWriteMessage(msg *msgflatbuf.Message, stream msgflatbuf.MessageWriter_WriteMessageServer) {
 	defer func() { <-s.activeRequestSem }()
 	buf := getBuffer()
 	defer returnBuffer(buf)
@@ -178,5 +180,17 @@ func (s *server) processWriteMessage(msg *msgflatbuf.Message) {
 		panic("@tallen not implemented yet..")
 	}
 
-	fmt.Printf("@tallen HANDLER CALL: shard=%d, type=%s\n", msg.Shard(), msg.ValueType().String())
+	fmt.Printf("@tallen FAKE HANDLER CALL: shard=%d, type=%s\n", msg.Shard(), msg.ValueType().String())
+
+	b := msgflatbuf.GetBuilder()
+	defer func() { msgflatbuf.ReturnBuilder(b) }()
+
+	msgflatbuf.AckStart(b)
+	msgflatbuf.AckAddId(b, msg.Id())
+	msgflatbuf.AckAddShard(b, msg.Shard())
+	msgflatbuf.AckAddSentAtNanos(b, msg.SentAtNanos())
+	offset := msgflatbuf.AckEnd(b)
+	b.Finish(offset)
+
+	stream.Send(b)
 }

@@ -38,30 +38,16 @@ func (rcv *Ack) MutateShard(n uint64) bool {
 	return rcv._tab.MutateUint64Slot(4, n)
 }
 
-func (rcv *Ack) Id(j int) int8 {
+func (rcv *Ack) Id() uint64 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.GetInt8(a + flatbuffers.UOffsetT(j*1))
+		return rcv._tab.GetUint64(o + rcv._tab.Pos)
 	}
 	return 0
 }
 
-func (rcv *Ack) IdLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
-	if o != 0 {
-		return rcv._tab.VectorLen(o)
-	}
-	return 0
-}
-
-func (rcv *Ack) MutateId(j int, n int8) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
-	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.MutateInt8(a+flatbuffers.UOffsetT(j*1), n)
-	}
-	return false
+func (rcv *Ack) MutateId(n uint64) bool {
+	return rcv._tab.MutateUint64Slot(6, n)
 }
 
 func (rcv *Ack) SentAtNanos() uint64 {
@@ -82,11 +68,8 @@ func AckStart(builder *flatbuffers.Builder) {
 func AckAddShard(builder *flatbuffers.Builder, shard uint64) {
 	builder.PrependUint64Slot(0, shard, 0)
 }
-func AckAddId(builder *flatbuffers.Builder, id flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(id), 0)
-}
-func AckStartIdVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
-	return builder.StartVector(1, numElems, 1)
+func AckAddId(builder *flatbuffers.Builder, id uint64) {
+	builder.PrependUint64Slot(1, id, 0)
 }
 func AckAddSentAtNanos(builder *flatbuffers.Builder, sentAtNanos uint64) {
 	builder.PrependUint64Slot(2, sentAtNanos, 0)

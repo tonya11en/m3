@@ -133,15 +133,15 @@ func (c *grpcClient) Flush() error {
 	return nil
 }
 
-// Ensure message implements m3msg producer message interface.
-var _ producer.Message = (*message)(nil)
-
 type flatbufMessage struct {
 	shard uint32
 
 	buf     []byte
 	builder *flatbuffers.Builder
 }
+
+// Ensure this message type implements m3msg producer message interface.
+var _ producer.Message = (*flatbufMessage)(nil)
 
 func newFlatbufMessage() *flatbufMessage {
 	return &flatbufMessage{
