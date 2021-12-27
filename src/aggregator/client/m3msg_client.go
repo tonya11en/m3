@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"sync"
 
+	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/uber-go/tally"
 	"go.uber.org/zap"
 
@@ -435,6 +436,10 @@ func (m *message) Shard() uint32 {
 
 func (m *message) Bytes() []byte {
 	return m.buf
+}
+
+func (m *message) Builder() *flatbuffers.Builder {
+	return nil
 }
 
 func (m *message) Size() int {

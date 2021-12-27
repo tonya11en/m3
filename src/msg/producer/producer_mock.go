@@ -27,6 +27,7 @@ package producer
 import (
 	"reflect"
 
+	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/m3db/m3/src/cluster/services"
 
 	"github.com/golang/mock/gomock"
@@ -61,6 +62,10 @@ func (m *MockMessage) Bytes() []byte {
 	ret := m.ctrl.Call(m, "Bytes")
 	ret0, _ := ret[0].([]byte)
 	return ret0
+}
+
+func (m *MockMessage) Builder() *flatbuffers.Builder {
+	return nil
 }
 
 // Bytes indicates an expected call of Bytes.

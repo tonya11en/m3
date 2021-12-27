@@ -23,6 +23,7 @@ package writer
 import (
 	"testing"
 
+	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/m3db/m3/src/msg/producer"
 )
 
@@ -40,6 +41,8 @@ func (e emptyMessage) Shard() uint32 { return 0 }
 
 // Bytes returns the bytes of the message.
 func (e emptyMessage) Bytes() []byte { return nil }
+
+func (e emptyMessage) Builder() *flatbuffers.Builder { return nil }
 
 // Size returns the size of the bytes of the message.
 func (e emptyMessage) Size() int { return 0 }

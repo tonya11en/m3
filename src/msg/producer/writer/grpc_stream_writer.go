@@ -4,61 +4,37 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/m3db/m3/src/msg/generated/msgflatbuf"
-	"github.com/m3db/m3/src/msg/producer"
 	"google.golang.org/grpc"
 )
 
-const (
-	// The amount of memory pre-allocated for a flatbuffer builder upon creation. This is a starting
-	// point and the builder will expand as needed.
-	defaultFlatbufSize = 4096
-
-	// Number of requests that can be queued and waiting to be sent over the gRPC stream.
-	reqStreamQueueSize = 64
-)
-
-var (
-	builderPool = sync.Pool{
-		New: func() interface{} {
-			// TODO don't hardcode
-			builder := flatbuffers.NewBuilder(defaultFlatbufSize)
-			return builder
-		},
-	}
-)
-
-func getBuilder() *flatbuffers.Builder {
-	return builderPool.Get().(*flatbuffers.Builder)
-}
-
-// Resets and returns a builder to the pool that has no further use.
-func returnBuilder(b *flatbuffers.Builder) {
-	b.Reset()
-	builderPool.Put(b)
-}
-
 type grpcStreamWriter struct {
-	ctx     context.Context
-	cancel  context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	client  msgflatbuf.MessageWriterClient
 	conn    *grpc.ClientConn
 	address string
 
-	inboundWrites chan *flatbuffers.Builder
-	inboundAcks   chan *msgflatbuf.Ack
+	// Messages to be written to the stream. This is passed to the stream writer in the constructor func.
+	msgChan <-chan *flatbuffers.Builder
+
+	// Where to push the received acks.
+	ackChan chan<- *metadata
 }
 
-func newGRPCStreamWriter(ctx context.Context, addr string) (*grpcStreamWriter, error) {
+func newGRPCStreamWriter(ctx context.Context, addr string, msgChan <-chan *flatbuffers.Builder, ackChan chan<- *metadata) (*grpcStreamWriter, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
 	gclient := grpcStreamWriter{
-		ctx:           ctx,
-		address:       addr,
-		inboundWrites: make(chan *flatbuffers.Builder, reqStreamQueueSize),
-		inboundAcks:   make(chan *msgflatbuf.Ack, reqStreamQueueSize),
+		ctx:     ctx,
+		cancel:  cancel,
+		address: addr,
+		msgChan: msgChan,
+		ackChan: ackChan,
 	}
 
 	fmt.Println("@tallen done making grpc client")
@@ -87,24 +63,26 @@ func (w *grpcStreamWriter) Init() {
 	mrc := msgflatbuf.NewMessageWriterClient(conn)
 	w.client = mrc
 
-	go func() {
-		for {
-			select {
-			case <-w.ctx.Done():
-				fmt.Println("context done, no longer creating streams")
-				return
-			default:
-			}
+	go w.connectLoop()
+}
 
-			err := w.startStream(w.ctx)
-			if err != nil {
-				fmt.Printf("error encountered during stream: %s\n", err.Error())
-				// TODO @tallen: don't sleep if we can help it.
-				time.Sleep(500 * time.Millisecond)
-				fmt.Printf("retrying stream establishment")
-			}
+func (w *grpcStreamWriter) connectLoop() {
+	for {
+		select {
+		case <-w.ctx.Done():
+			fmt.Println("context done, no longer creating streams")
+			return
+		default:
 		}
-	}()
+
+		err := w.startStream(w.ctx)
+		if err != nil {
+			fmt.Printf("error encountered during stream: %s\n", err.Error())
+			// TODO @tallen: don't sleep if we can help it.
+			time.Sleep(500 * time.Millisecond)
+			fmt.Printf("retrying stream establishment")
+		}
+	}
 }
 
 func (w *grpcStreamWriter) receiveAcks(
@@ -113,8 +91,16 @@ func (w *grpcStreamWriter) receiveAcks(
 	errChan chan error) {
 
 	for {
-		in, err := stream.Recv()
+		select {
+		case <-stream.Context().Done():
+			return
+		default:
+		}
+
+		ack, err := stream.Recv()
 		if err == io.EOF {
+			fmt.Println("stream terminated")
+			// This will also signal the sender goroutine to return.
 			errChan <- nil
 			return
 		}
@@ -124,11 +110,20 @@ func (w *grpcStreamWriter) receiveAcks(
 			return
 		}
 
-		w.inboundAcks <- in
+		w.ackChan <- &metadata{
+			metadataKey: metadataKey{
+				shard: ack.Shard(),
+				id:    ack.Id(),
+			},
+			sentAtNanos: ack.SentAtNanos(),
+		}
 	}
 }
 
 func (w *grpcStreamWriter) startStream(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	fmt.Printf("establishing message writer stream for %s\n", w.address)
 	defer fmt.Printf("stream terminated for %s\n", w.address)
 
@@ -137,34 +132,26 @@ func (w *grpcStreamWriter) startStream(ctx context.Context) error {
 		fmt.Printf("error creating stream: %s\n", err.Error())
 		return err
 	}
+	defer stream.CloseSend()
 
 	recvErrChan := make(chan error)
 	go w.receiveAcks(ctx, stream, recvErrChan)
 
 	for {
 		select {
-		case <-w.ctx.Done():
-			fmt.Printf("writer closing")
-			return nil
 		case <-stream.Context().Done():
 			fmt.Printf("stream context cancelled")
 			return nil
+
 		case err := <-recvErrChan:
-			// NOTE: there could be writes/acks queued up and these will need to be handled!
-			fmt.Println("stream terminated by server")
 			return err
-		case b := <-w.inboundWrites:
-			// These come from the calls to Write().
+
+		case b := <-w.msgChan:
 			err := stream.Send(b)
 			if err != nil {
 				fmt.Printf("stream send failed")
 				return err
 			}
-		case <-w.inboundAcks:
-			// These come from the server.
-
-			// TODODODODODOD this is a pickle... acks don't do anything until this is all moved into the
-			// message writer, not the consumer writer.
 		}
 	}
 }
@@ -174,15 +161,12 @@ func (w *grpcStreamWriter) Address() string {
 	return w.address
 }
 
-func (w *grpcStreamWriter) SendOnStream(msg *producer.RefCountedMessage) {
-	for {
-		select {
-		case <-w.ctx.Done():
-			fmt.Printf("stream writer halting ingest")
-		case w.inboundWrites <- msg:
-	}
-}
-
 // Close closes the consumer writer.
 func (w *grpcStreamWriter) Close() {
+	fmt.Println("closing stream writer")
+	w.cancel()
+}
+
+func (w *grpcStreamWriter) MessageChannel() <-chan *flatbuffers.Builder {
+	return w.msgChan
 }

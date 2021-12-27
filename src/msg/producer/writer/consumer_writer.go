@@ -150,13 +150,15 @@ func newConsumerWriter(
 	}
 
 	// TODO @tallen: just gonna hack this in here to get the ball rolling.
-	if opts.UseGRPC() {
-		grpcWriter, err := newGRPCConsumerWriter(addr, opts)
-		if err != nil {
-			panic(err.Error())
+	/*
+		if opts.UseGRPC() {
+			grpcWriter, err := newGRPCConsumerWriter(addr, opts)
+			if err != nil {
+				panic(err.Error())
+			}
+			return grpcWriter
 		}
-		return grpcWriter
-	}
+	*/
 
 	connOpts := opts.ConnectionOptions()
 	w := &consumerWriterImpl{
