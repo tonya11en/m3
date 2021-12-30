@@ -1,3 +1,23 @@
+// Copyright (c) 2021 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 package integration
 
 import (
@@ -8,9 +28,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 
@@ -18,12 +36,12 @@ import (
 	agg_client "github.com/m3db/m3/src/aggregator/client"
 	agg_grpc "github.com/m3db/m3/src/aggregator/server/grpc"
 	"github.com/m3db/m3/src/aggregator/server/m3msg"
-	"github.com/m3db/m3/src/metrics/generated/proto/metricpb"
 	"github.com/m3db/m3/src/metrics/metadata"
 	"github.com/m3db/m3/src/metrics/metric/unaggregated"
 	"github.com/m3db/m3/src/msg/consumer"
-	"github.com/m3db/m3/src/msg/generated/msgflatbuf"
 	"github.com/m3db/m3/src/msg/producer"
+	"github.com/m3db/m3/src/msg/producer/buffer"
+	"github.com/m3db/m3/src/msg/producer/writer"
 	"github.com/m3db/m3/src/x/instrument"
 	xserver "github.com/m3db/m3/src/x/server"
 	xtest "github.com/m3db/m3/src/x/test"
@@ -58,7 +76,19 @@ func BenchmarkGRPCStuff(b *testing.B) {
 	assert.Nil(b, err)
 	b.Cleanup(func() { conn.Close() })
 
-	c, err := agg_client.NewGRPCClient()
+	wopts := writer.NewOptions()
+	wopts.SetUseGRPC(true)
+
+	bopts := buffer.NewOptions()
+	bufr, err := buffer.NewBuffer(bopts)
+
+	w := writer.NewWriter(wopts)
+	popts := producer.NewOptions().SetWriter(w).SetBuffer(bufr)
+	pr := producer.NewProducer(popts)
+
+	grpcOpts := agg_client.NewGRPCOptions().SetProducer(pr)
+	copts := agg_client.NewOptions().SetGRPCOptions(grpcOpts)
+	c, err := agg_client.NewGRPCClient(copts)
 	assert.Nil(b, err)
 
 	time.Sleep(time.Second)
@@ -79,19 +109,29 @@ func BenchmarkGRPCStuff(b *testing.B) {
 	}
 }
 
-func BenchmarkGRPCSrv(b *testing.B) {
+/*
+//func BenchmarkGRPCSrv(b *testing.B) {
+func TestGRPCSrv(b *testing.T) {
 	var err error
-	b.StopTimer()
 
 	controller := xtest.NewController(b)
 	mockAgg := aggregator.NewMockAggregator(controller)
 	mockAgg.EXPECT().AddUntimed(gomock.Any(), gomock.Any()).AnyTimes()
 
-	srv, err := agg_grpc.NewServer("what", mockAgg)
+	srv, err := agg_grpc.NewServer("localhost:11337", mockAgg)
 	assert.Nil(b, err, "failed to make server")
 	if err != nil {
 		b.Fatal(err.Error())
 	}
+
+	go func() {
+		assert.Nil(b, srv.ListenAndServe())
+	}()
+
+	grpcOpts := agg_client.NewGRPCOptions()
+	copts := agg_client.NewOptions().SetGRPCOptions(grpcOpts)
+	client, err := agg_client.NewGRPCClient(copts)
+	assert.Nil(b, err)
 
 	builder := flatbuffers.NewBuilder(4096)
 	anno := builder.CreateByteString([]byte("anno"))
@@ -104,20 +144,26 @@ func BenchmarkGRPCSrv(b *testing.B) {
 	msgflatbuf.CounterWithMetadatasAddValue(builder, 1337)
 	counter := msgflatbuf.CounterWithMetadatasEnd(builder)
 
-	flatbuffer.WriteUntimedCounterRequestStart(builder)
-	flatbuffer.WriteUntimedCounterRequestAddCounter(builder, counter)
-	reqOffset := flatbuffer.WriteUntimedCounterRequestEnd(builder)
-	builder.Finish(reqOffset)
+	msgflatbuf.MessageStart(builder)
+	msgflatbuf.MessageAddId(builder, 12345)
+	msgflatbuf.MessageAddMsgValue(builder, counter)
+	msgflatbuf.MessageAddValueType(builder, msgflatbuf.MessageValueCounterWithMetadatas)
+	msgflatbuf.MessageAddShard(builder, 0)
+	msgflatbuf.MessageAddSentAtNanos(builder, 0)
+	offset := msgflatbuf.MessageEnd(builder)
 
-	req := flatbuffer.GetRootAsWriteUntimedCounterRequest(builder.Bytes, builder.Head())
-	stream := makeStreamMock()
+	builder.Finish(offset)
 
-	b.StartTimer()
-
-	for n := 0; n < b.N; n++ {
-		srv.WriteUntimedCounter(req, stream)
+	assert.Nil(b, client.Init())
+	unaggCounter := unaggregated.Counter{
+		ID:    []byte("some id"),
+		Value: 6969.0,
 	}
+
+	err = client.WriteUntimedCounter(unaggCounter, nil)
+	assert.Nil(b, err)
 }
+*/
 
 func BenchmarkM3MsgClient(b *testing.B) {
 	var err error
@@ -190,6 +236,7 @@ func BenchmarkM3MsgClient(b *testing.B) {
 	}
 }
 
+/*
 func BenchmarkM3MsgSrv(b *testing.B) {
 	var err error
 	b.StopTimer()
@@ -266,3 +313,4 @@ func BenchmarkM3MsgSrv(b *testing.B) {
 		proc.Process(msg)
 	}
 }
+*/

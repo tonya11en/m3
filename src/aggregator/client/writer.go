@@ -22,6 +22,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/m3db/m3/src/cluster/placement"
@@ -94,6 +95,7 @@ func newInstanceWriter(instance placement.Instance, opts Options) instanceWriter
 }
 
 func (w *writer) Write(shard uint32, payload payloadUnion) error {
+	fmt.Printf("@tallen top level write. shard=%d\n", shard)
 	w.RLock()
 	if w.closed {
 		w.RUnlock()

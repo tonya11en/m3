@@ -113,6 +113,7 @@ func NewClient(opts Options) (Client, error) {
 	case TCPAggregatorClient:
 		return NewTCPClient(opts)
 	case GRPCAggregatorClient:
+		fmt.Printf("@tallen making grpc client\n")
 		return NewGRPCClient(opts)
 	}
 	return nil, fmt.Errorf("unrecognized client type: %v", clientType)

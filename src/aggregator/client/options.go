@@ -81,6 +81,7 @@ var (
 		LegacyAggregatorClient,
 		M3MsgAggregatorClient,
 		TCPAggregatorClient,
+		GRPCAggregatorClient,
 	}
 
 	errTCPClientNoWatcherOptions = errors.New("legacy client: no watcher options set")

@@ -58,23 +58,24 @@ func Serve(
 		}
 	}()
 
-	if grpcAddr := opts.GRPCAddr(); grpcAddr != "" {
-		grpcServer, err := grpcserver.NewServer(grpcAddr, aggregator)
-		if err != nil {
-			return fmt.Errorf("could not create gRPC server: addr=%s, err=%v", grpcAddr, err)
-		}
-		log.Info("starting gRPC server", zap.String("addr", grpcAddr))
-		if err := grpcServer.ListenAndServe(); err != nil {
-			return fmt.Errorf("could not start gRPC server at: addr=%s, err=%v", grpcAddr, err)
-		}
-
-		defer func() {
-			start := time.Now()
-			closeLogger.Info("closing gRPC server")
-			grpcServer.Close()
-			closeLogger.Info("gRPC server closed", zap.String("took", time.Since(start).String()))
-		}()
+	fmt.Println("@tallen oh hi here we are")
+	fmt.Println("@tallen lolololol")
+	grpcAddr := "localhost:11337"
+	grpcServer, err := grpcserver.NewServer(grpcAddr, aggregator)
+	if err != nil {
+		return fmt.Errorf("could not create gRPC server: addr=%s, err=%v", grpcAddr, err)
 	}
+	log.Info("starting gRPC server", zap.String("addr", grpcAddr))
+	if err := grpcServer.ListenAndServe(); err != nil {
+		return fmt.Errorf("could not start gRPC server at: addr=%s, err=%v", grpcAddr, err)
+	}
+
+	defer func() {
+		start := time.Now()
+		closeLogger.Info("closing gRPC server")
+		grpcServer.Close()
+		closeLogger.Info("gRPC server closed", zap.String("took", time.Since(start).String()))
+	}()
 
 	if m3msgAddr := opts.M3MsgAddr(); m3msgAddr != "" {
 		serverOpts := opts.M3MsgServerOpts()

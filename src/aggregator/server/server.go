@@ -21,6 +21,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -203,6 +204,7 @@ func Run(opts RunOptions) {
 	doneCh := make(chan struct{})
 	closedCh := make(chan struct{})
 	go func() {
+		fmt.Println("@tallen wtf is this")
 		if err := serve.Serve(
 			aggregator,
 			doneCh,
