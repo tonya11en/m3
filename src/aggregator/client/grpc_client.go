@@ -27,12 +27,12 @@ func NewGRPCClient(opts Options) (Client, error) {
 		return nil, err
 	}
 
-	m3msgOpts := opts.M3MsgOptions()
-	if err := m3msgOpts.Validate(); err != nil {
+	grpcOpts := opts.GRPCOptions()
+	if err := grpcOpts.Validate(); err != nil {
 		return nil, err
 	}
 
-	producer := m3msgOpts.Producer()
+	producer := grpcOpts.Producer()
 	if err := producer.Init(); err != nil {
 		return nil, err
 	}
@@ -149,8 +149,6 @@ func newFlatbufMessage() *flatbufMessage {
 	}
 }
 
-// Encode encodes a m3msg payload
-//nolint:gocyclo,gocritic
 func (m *flatbufMessage) Encode(
 	shard uint32,
 	payload payloadUnion) error {

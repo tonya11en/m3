@@ -127,5 +127,5 @@ func (gw *grpcShardWriter) Close() {
 }
 
 func (gw *grpcShardWriter) QueueSize() int {
-	return 0
+	return -1
 }

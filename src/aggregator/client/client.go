@@ -102,6 +102,8 @@ func NewClient(opts Options) (Client, error) {
 		return nil, err
 	}
 
+	fmt.Printf("@tallen %v\n", opts.AggregatorClientType())
+
 	clientType := opts.AggregatorClientType()
 	switch clientType {
 	case M3MsgAggregatorClient:

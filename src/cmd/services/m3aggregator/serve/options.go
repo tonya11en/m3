@@ -67,12 +67,12 @@ type Options interface {
 	// HTTPServerOpts returns the HTTPServerOpts.
 	HTTPServerOpts() httpserver.Options
 
-	SetGRPCServerOpts(value grpcserver.Options)
+	SetGRPCServerOpts(value grpcserver.Options) Options
 
 	GRPCServerOpts() grpcserver.Options
 
 	GRPCAddr() string
-	SetGRPCAddr(addr string)
+	SetGRPCAddr(addr string) Options
 
 	// SetInstrumentOpts sets the InstrumentOpts.
 	SetInstrumentOpts(value instrument.Options) Options
@@ -188,8 +188,9 @@ func (o *options) RWOptions() xio.Options {
 	return o.rwOpts
 }
 
-func (o *options) SetGRPCServerOpts(value grpcserver.Options) {
+func (o *options) SetGRPCServerOpts(value grpcserver.Options) Options {
 	o.grpcServerOpts = value
+	return o
 }
 
 func (o *options) GRPCServerOpts() grpcserver.Options {
@@ -200,6 +201,7 @@ func (o *options) GRPCAddr() string {
 	return o.grpcAddr
 }
 
-func (o *options) SetGRPCAddr(addr string) {
+func (o *options) SetGRPCAddr(addr string) Options {
 	o.grpcAddr = addr
+	return o
 }

@@ -46,6 +46,7 @@ var errNoM3MsgOptions = errors.New("m3msg aggregator client: missing m3msg optio
 type Configuration struct {
 	Type                       AggregatorClientType            `yaml:"type"`
 	M3Msg                      *M3MsgConfiguration             `yaml:"m3msg"`
+	GRPC                       *GRPCConfiguration              `yaml:"grpc"`
 	PlacementKV                *kv.OverrideConfiguration       `yaml:"placementKV"`
 	Watcher                    *placement.WatcherConfiguration `yaml:"placementWatcher"`
 	HashType                   *sharding.HashType              `yaml:"hashType"`
@@ -109,6 +110,20 @@ func (c *Configuration) newClientOptions(
 		SetRWOptions(rwOpts)
 
 	switch c.Type {
+	case GRPCAggregatorClient:
+		grpcCfg := c.GRPC
+		if grpcCfg == nil {
+			return nil, fmt.Errorf("no grpc options") // @tallen
+		}
+
+		grpcOpts, err := grpcCfg.NewGRPCOptions(kvClient, instrumentOpts, rwOpts)
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the M3Msg options configured.
+		opts = opts.SetGRPCOptions(grpcOpts)
+
 	case M3MsgAggregatorClient:
 		m3msgCfg := c.M3Msg
 		if m3msgCfg == nil {
@@ -274,6 +289,31 @@ func (c *EncoderConfiguration) NewEncoderOptions(
 		bytesPool.Init()
 	}
 	return opts
+}
+
+type GRPCConfiguration struct {
+	Producer producerconfig.ProducerConfiguration `yaml:"producer"`
+}
+
+func (c *GRPCConfiguration) NewGRPCOptions(
+	kvClient m3clusterclient.Client,
+	instrumentOpts instrument.Options,
+	rwOpts xio.Options,
+) (GRPCOptions, error) {
+	opts := NewGRPCOptions()
+
+	producer, err := c.Producer.NewProducer(kvClient, instrumentOpts, rwOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	opts = opts.SetProducer(producer)
+
+	// Validate the options.
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	return opts, nil
 }
 
 // M3MsgConfiguration contains the M3Msg client configuration, required

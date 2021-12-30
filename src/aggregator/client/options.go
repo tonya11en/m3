@@ -48,7 +48,7 @@ const (
 
 	GRPCAggregatorClient
 
-	defaultAggregatorClient = LegacyAggregatorClient
+	defaultAggregatorClient = GRPCAggregatorClient
 
 	defaultFlushWorkerCount = 64
 
@@ -96,6 +96,8 @@ func (t AggregatorClientType) String() string {
 		return "m3msg"
 	case TCPAggregatorClient:
 		return "tcp"
+	case GRPCAggregatorClient:
+		return "grpc"
 	}
 	return "unknown"
 }
@@ -130,6 +132,10 @@ type Options interface {
 
 	// AggregatorClientType returns the client type.
 	AggregatorClientType() AggregatorClientType
+
+	SetGRPCOptions(value GRPCOptions) Options
+
+	GRPCOptions() GRPCOptions
 
 	// SetM3MsgOptions sets the M3Msg aggregator client options.
 	SetM3MsgOptions(value M3MsgOptions) Options
@@ -236,6 +242,7 @@ type options struct {
 	instrumentOpts             instrument.Options
 	encoderOpts                protobuf.UnaggregatedOptions
 	m3msgOptions               M3MsgOptions
+	grpcOptions                GRPCOptions
 	connOpts                   ConnectionOptions
 	rwOpts                     xio.Options
 	shardFn                    sharding.ShardFn
@@ -288,6 +295,9 @@ func (o *options) Validate() error {
 			return errTCPClientNoWatcherOptions
 		}
 		return nil
+	case GRPCAggregatorClient:
+		//todo @tallen actual valudation
+		return nil
 	default:
 		return fmt.Errorf("unknown client type: %v", o.aggregatorClientType)
 	}
@@ -301,6 +311,16 @@ func (o *options) SetAggregatorClientType(value AggregatorClientType) Options {
 
 func (o *options) AggregatorClientType() AggregatorClientType {
 	return o.aggregatorClientType
+}
+
+func (o *options) SetGRPCOptions(value GRPCOptions) Options {
+	opts := *o
+	opts.grpcOptions = value
+	return &opts
+}
+
+func (o *options) GRPCOptions() GRPCOptions {
+	return o.grpcOptions
 }
 
 func (o *options) SetM3MsgOptions(value M3MsgOptions) Options {
