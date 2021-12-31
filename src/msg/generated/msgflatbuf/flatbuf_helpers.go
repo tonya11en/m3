@@ -160,7 +160,7 @@ func MakeGraphitePrefixVector(prefixes [][]byte, b *flatbuffers.Builder) flatbuf
 		offsets[idx] = MakeGraphitePrefixFlatbuf(p, b)
 	}
 	GraphitePrefixStart(b)
-	for i := numPrefixes; i >= 0; i-- {
+	for i := numPrefixes - 1; i >= 0; i-- {
 		b.PrependUOffsetT(offsets[i])
 	}
 	return b.EndVector(numPrefixes)
@@ -177,7 +177,7 @@ func MakePipelineMetadataFlatbuf(pm *metadata.PipelineMetadata, b *flatbuffers.B
 
 	numAggregationIds := len(pm.AggregationID)
 	PipelineMetadataStartAggregationIdVector(b, numAggregationIds)
-	for i := numAggregationIds; i >= 0; i-- {
+	for i := numAggregationIds - 1; i >= 0; i-- {
 		b.PrependUint64(pm.AggregationID[i])
 	}
 	aggIdsOffset := b.EndVector(numAggregationIds)
@@ -204,7 +204,7 @@ func MakeMetadataFlatbuf(m metadata.Metadata, b *flatbuffers.Builder) (flatbuffe
 	}
 
 	MetadataStartPipelinesVector(b, numPipelines)
-	for i := numPipelines; i >= 0; i-- {
+	for i := numPipelines - 1; i >= 0; i-- {
 		b.PrependUOffsetT(pipelineOffsets[i])
 	}
 	pvOffset := b.EndVector(numPipelines)

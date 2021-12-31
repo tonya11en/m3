@@ -26,10 +26,6 @@ import (
 
 	"github.com/m3db/m3/src/aggregator/aggregator"
 	grpcserver "github.com/m3db/m3/src/aggregator/server/grpc"
-	httpserver "github.com/m3db/m3/src/aggregator/server/http"
-	m3msgserver "github.com/m3db/m3/src/aggregator/server/m3msg"
-	rawtcpserver "github.com/m3db/m3/src/aggregator/server/rawtcp"
-	xdebug "github.com/m3db/m3/src/x/debug"
 
 	"go.uber.org/zap"
 )
@@ -60,7 +56,7 @@ func Serve(
 
 	fmt.Println("@tallen oh hi here we are")
 	fmt.Println("@tallen lolololol")
-	grpcAddr := "localhost:11337"
+	grpcAddr := "localhost:6002" // @tallen hardcoded
 	grpcServer, err := grpcserver.NewServer(grpcAddr, aggregator)
 	if err != nil {
 		return fmt.Errorf("could not create gRPC server: addr=%s, err=%v", grpcAddr, err)
@@ -76,61 +72,6 @@ func Serve(
 		grpcServer.Close()
 		closeLogger.Info("gRPC server closed", zap.String("took", time.Since(start).String()))
 	}()
-
-	if m3msgAddr := opts.M3MsgAddr(); m3msgAddr != "" {
-		serverOpts := opts.M3MsgServerOpts()
-		m3msgServer, err := m3msgserver.NewServer(m3msgAddr, aggregator, serverOpts)
-		if err != nil {
-			return fmt.Errorf("could not create m3msg server: addr=%s, err=%v", m3msgAddr, err)
-		}
-		if err := m3msgServer.ListenAndServe(); err != nil {
-			return fmt.Errorf("could not start m3msg server at: addr=%s, err=%v", m3msgAddr, err)
-		}
-
-		defer func() {
-			start := time.Now()
-			closeLogger.Info("closing m3msg server")
-			m3msgServer.Close()
-			closeLogger.Info("m3msg server closed", zap.String("took", time.Since(start).String()))
-		}()
-
-		log.Info("m3msg server listening", zap.String("addr", m3msgAddr))
-	}
-
-	if rawTCPAddr := opts.RawTCPAddr(); rawTCPAddr != "" {
-		serverOpts := opts.RawTCPServerOpts()
-		rawTCPServer := rawtcpserver.NewServer(rawTCPAddr, aggregator, serverOpts)
-		if err := rawTCPServer.ListenAndServe(); err != nil {
-			return fmt.Errorf("could not start raw TCP server at: addr=%s, err=%v", rawTCPAddr, err)
-		}
-
-		defer func() {
-			start := time.Now()
-			closeLogger.Info("closing raw TCPServer")
-			rawTCPServer.Close()
-			closeLogger.Info("closed raw TCPServer", zap.String("took", time.Since(start).String()))
-		}()
-
-		log.Info("raw TCP server listening", zap.String("addr", rawTCPAddr))
-	}
-
-	if httpAddr := opts.HTTPAddr(); httpAddr != "" {
-		serverOpts := opts.HTTPServerOpts()
-		xdebug.RegisterPProfHandlers(serverOpts.Mux())
-		httpServer := httpserver.NewServer(httpAddr, aggregator, serverOpts, iOpts)
-		if err := httpServer.ListenAndServe(); err != nil {
-			return fmt.Errorf("could not start http server at: addr=%s, err=%v", httpAddr, err)
-		}
-
-		defer func() {
-			start := time.Now()
-			closeLogger.Info("closing http server")
-			httpServer.Close()
-			closeLogger.Info("closed http server", zap.String("took", time.Since(start).String()))
-		}()
-
-		log.Info("http server listening", zap.String("addr", httpAddr))
-	}
 
 	// Wait for exit signal.
 	<-doneCh

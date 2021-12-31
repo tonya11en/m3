@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 // Copyright (c) 2016 Uber Technologies, Inc.
@@ -23,12 +24,15 @@
 package integration
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/m3db/m3/src/aggregator/aggregator"
+	grpc_srv "github.com/m3db/m3/src/aggregator/server/grpc"
 	"github.com/m3db/m3/src/cluster/placement"
 	"github.com/m3db/m3/src/metrics/metric"
 )
@@ -44,6 +48,7 @@ func TestMultiClientOneTypeWithStagedMetadatas(t *testing.T) {
 }
 
 func testMultiClientOneType(t *testing.T, metadataFn metadataFn) {
+	fmt.Println("@tallen hi its the test")
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -55,7 +60,7 @@ func testMultiClientOneType(t *testing.T, metadataFn metadataFn) {
 	serverOpts = serverOpts.SetClockOptions(clock.Options())
 
 	// Placement setup.
-	numShards := 1024
+	numShards := 8
 	cfg := placementInstanceConfig{
 		instanceID:          serverOpts.InstanceID(),
 		shardSetID:          serverOpts.ShardSetID(),
@@ -70,16 +75,25 @@ func testMultiClientOneType(t *testing.T, metadataFn metadataFn) {
 	serverOpts = setupTopic(t, serverOpts, placement)
 
 	// Create server.
+	fmt.Println("@tallen hi 1")
 	testServer := newTestServerSetup(t, serverOpts)
 	defer testServer.close()
 
-	// Start the server.
-	log := testServer.aggregatorOpts.InstrumentOptions().Logger()
-	log.Info("test multiple clients sending one type of metrics")
-	require.NoError(t, testServer.startServer())
-	log.Info("server is now up")
-	require.NoError(t, testServer.waitUntilLeader())
-	log.Info("server is now the leader")
+	agg := aggregator.NewAggregator(testServer.aggregatorOpts)
+	//grpcSrv, err := grpc_srv.NewServer("localhost:6002", agg)
+	grpcSrv, err := grpc_srv.NewServer("localhost:13377", agg)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	fmt.Println("@tallen hi 2")
+	go func() {
+		fmt.Println("@tallen trying to start the server")
+		err := grpcSrv.ListenAndServe()
+		if err != nil {
+			panic(err.Error())
+		}
+	}()
 
 	var (
 		idPrefix   = "foo"
@@ -91,6 +105,7 @@ func testMultiClientOneType(t *testing.T, metadataFn metadataFn) {
 		clients    = make([]*client, numClients)
 	)
 	for i := 0; i < numClients; i++ {
+		fmt.Println("@tallen test client ", i)
 		clients[i] = testServer.newClient(t)
 		require.NoError(t, clients[i].connect())
 	}
@@ -107,6 +122,9 @@ func testMultiClientOneType(t *testing.T, metadataFn metadataFn) {
 		valueGenOpts: defaultValueGenOpts,
 		metadataFn:   metadataFn,
 	})
+
+	fmt.Println("@tallen 3")
+
 	for _, data := range dataset {
 		clock.SetNow(data.timestamp)
 		for _, mm := range data.metricWithMetadatas {
@@ -131,13 +149,4 @@ func testMultiClientOneType(t *testing.T, metadataFn metadataFn) {
 	for i := 0; i < numClients; i++ {
 		require.NoError(t, clients[i].close())
 	}
-
-	// Stop the server.
-	require.NoError(t, testServer.stopServer())
-	log.Info("server is now down")
-
-	// Validate results.
-	expected := mustComputeExpectedResults(t, finalTime, dataset, testServer.aggregatorOpts)
-	actual := testServer.sortedResults()
-	require.Equal(t, expected, actual)
 }

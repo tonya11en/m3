@@ -109,109 +109,19 @@ func (c *Configuration) newClientOptions(
 		SetInstrumentOptions(instrumentOpts).
 		SetRWOptions(rwOpts)
 
-	switch c.Type {
-	case GRPCAggregatorClient:
-		grpcCfg := c.GRPC
-		if grpcCfg == nil {
-			return nil, fmt.Errorf("no grpc options") // @tallen
-		}
-
-		grpcOpts, err := grpcCfg.NewGRPCOptions(kvClient, instrumentOpts, rwOpts)
-		if err != nil {
-			return nil, err
-		}
-
-		// Set the M3Msg options configured.
-		opts = opts.SetGRPCOptions(grpcOpts)
-
-	case M3MsgAggregatorClient:
-		m3msgCfg := c.M3Msg
-		if m3msgCfg == nil {
-			return nil, errNoM3MsgOptions
-		}
-
-		m3msgOpts, err := m3msgCfg.NewM3MsgOptions(kvClient, instrumentOpts, rwOpts)
-		if err != nil {
-			return nil, err
-		}
-
-		// Allow M3Msg options to override the timer options for instrument options.
-		opts = opts.SetInstrumentOptions(
-			opts.InstrumentOptions().SetTimerOptions(m3msgOpts.TimerOptions()))
-
-		// Set the M3Msg options configured.
-		opts = opts.SetM3MsgOptions(m3msgOpts)
-	case LegacyAggregatorClient:
-		placementKV := c.PlacementKV
-		if placementKV == nil {
-			return nil, errLegacyClientNoPlacementKVConfig
-		}
-
-		placementWatcher := c.Watcher
-		if placementWatcher == nil {
-			return nil, errLegacyClientNoWatcherConfig
-		}
-
-		scope := instrumentOpts.MetricsScope()
-		connectionOpts := c.Connection.NewConnectionOptions(scope.SubScope("connection"))
-		kvOpts, err := placementKV.NewOverrideOptions()
-		if err != nil {
-			return nil, err
-		}
-
-		placementStore, err := kvClient.Store(kvOpts)
-		if err != nil {
-			return nil, err
-		}
-
-		iOpts := instrumentOpts.SetMetricsScope(scope.SubScope("encoder"))
-		encoderOpts := c.Encoder.NewEncoderOptions(iOpts)
-
-		iOpts = instrumentOpts.SetMetricsScope(scope.SubScope("placement-watcher"))
-		watcherOpts := placementWatcher.NewOptions(placementStore, iOpts)
-
-		// Get the shard fn.
-		hashType := sharding.DefaultHash
-		if c.HashType != nil {
-			hashType = *c.HashType
-		}
-		shardFn, err := hashType.ShardFn()
-		if err != nil {
-			return nil, err
-		}
-
-		opts = opts.SetWatcherOptions(watcherOpts).
-			SetShardFn(shardFn).
-			SetEncoderOptions(encoderOpts).
-			SetConnectionOptions(connectionOpts)
-
-		if c.ShardCutoverWarmupDuration != nil {
-			opts = opts.SetShardCutoverWarmupDuration(*c.ShardCutoverWarmupDuration)
-		}
-		if c.ShardCutoffLingerDuration != nil {
-			opts = opts.SetShardCutoffLingerDuration(*c.ShardCutoffLingerDuration)
-		}
-		if c.FlushWorkerCount != 0 {
-			opts = opts.SetFlushWorkerCount(c.FlushWorkerCount)
-		}
-		if c.ForceFlushEvery != 0 {
-			opts = opts.SetForceFlushEvery(c.ForceFlushEvery)
-		}
-		if c.MaxBatchSize != 0 {
-			opts = opts.SetMaxBatchSize(c.MaxBatchSize)
-		}
-		if c.MaxTimerBatchSize != 0 {
-			opts = opts.SetMaxTimerBatchSize(c.MaxTimerBatchSize)
-		}
-		if c.QueueSize != 0 {
-			opts = opts.SetInstanceQueueSize(c.QueueSize)
-		}
-		if c.QueueDropType != nil {
-			opts = opts.SetQueueDropType(*c.QueueDropType)
-		}
-	default:
-		return nil, fmt.Errorf("unknown client type: %v", c.Type)
+	grpcCfg := c.GRPC
+	if grpcCfg == nil {
+		return nil, fmt.Errorf("no grpc options") // @tallen
 	}
+
+	grpcOpts, err := grpcCfg.NewGRPCOptions(kvClient, instrumentOpts, rwOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the M3Msg options configured.
+	fmt.Println("@tallen settings grpc opts")
+	opts = opts.SetGRPCOptions(grpcOpts)
 
 	// Validate the options.
 	if err := opts.Validate(); err != nil {

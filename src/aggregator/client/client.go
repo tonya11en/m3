@@ -104,17 +104,6 @@ func NewClient(opts Options) (Client, error) {
 
 	fmt.Printf("@tallen %v\n", opts.AggregatorClientType())
 
-	clientType := opts.AggregatorClientType()
-	switch clientType {
-	case M3MsgAggregatorClient:
-		return NewM3MsgClient(opts)
-	case LegacyAggregatorClient:
-		fallthrough // LegacyAggregatorClient is an alias
-	case TCPAggregatorClient:
-		return NewTCPClient(opts)
-	case GRPCAggregatorClient:
-		fmt.Printf("@tallen making grpc client\n")
-		return NewGRPCClient(opts)
-	}
-	return nil, fmt.Errorf("unrecognized client type: %v", clientType)
+	fmt.Printf("@tallen unconditionally making grpc client\n")
+	return NewGRPCClient(opts)
 }

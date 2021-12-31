@@ -144,7 +144,7 @@ func (w *grpcStreamWriter) startStream(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	fmt.Printf("establishing message writer stream for %s\n", w.address)
+	fmt.Printf("@tallen establishing message writer stream for %s\n", w.address)
 	defer fmt.Printf("stream terminated for %s\n", w.address)
 
 	stream, err := w.client.WriteMessage(ctx)
@@ -167,6 +167,7 @@ func (w *grpcStreamWriter) startStream(ctx context.Context) error {
 			return err
 
 		case b := <-w.msgChan:
+			b.FinishedBytes() // @tallen
 			err := stream.Send(b)
 			if err != nil {
 				fmt.Printf("stream send failed")

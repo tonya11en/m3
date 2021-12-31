@@ -89,7 +89,10 @@ func (c *grpcClient) WriteUntimedCounter(
 	msg := newFlatbufMessage()
 
 	shard := c.shardFn(payload.untimed.metric.ID, c.numShards)
-	msg.Encode(shard, payload)
+	err := msg.Encode(shard, payload)
+	if err != nil {
+		panic(err.Error())
+	}
 	return c.write(msg)
 }
 
@@ -98,6 +101,7 @@ func (c *grpcClient) WriteUntimedBatchTimer(
 	batchTimer unaggregated.BatchTimer,
 	metadatas metadata.StagedMetadatas,
 ) error {
+	panic("@tallen unimplemented")
 	return nil
 }
 
@@ -106,6 +110,7 @@ func (c *grpcClient) WriteUntimedGauge(
 	gauge unaggregated.Gauge,
 	metadatas metadata.StagedMetadatas,
 ) error {
+	panic("@tallen unimplemented")
 	return nil
 }
 
@@ -114,6 +119,7 @@ func (c *grpcClient) WriteTimed(
 	metric aggregated.Metric,
 	metadata metadata.TimedMetadata,
 ) error {
+	panic("@tallen unimplemented")
 	return nil
 }
 
@@ -122,6 +128,7 @@ func (c *grpcClient) WritePassthrough(
 	metric aggregated.Metric,
 	storagePolicy policy.StoragePolicy,
 ) error {
+	panic("@tallen unimplemented")
 	return nil
 }
 
@@ -130,6 +137,7 @@ func (c *grpcClient) WriteTimedWithStagedMetadatas(
 	metric aggregated.Metric,
 	metadatas metadata.StagedMetadatas,
 ) error {
+	panic("@tallen unimplemented")
 	return nil
 }
 
@@ -138,6 +146,7 @@ func (c *grpcClient) WriteForwarded(
 	metric aggregated.ForwardedMetric,
 	metadata metadata.ForwardMetadata,
 ) error {
+	panic("@tallen unimplemented")
 	return nil
 }
 
@@ -218,6 +227,8 @@ func (m *flatbufMessage) Encode(
 			//todo
 			fallthrough
 		default:
+			// @tallen
+			panic("wat")
 			return fmt.Errorf("unrecognized metric type: %v",
 				payload.untimed.metric.Type)
 		}
@@ -231,6 +242,8 @@ func (m *flatbufMessage) Encode(
 		//todo
 		fallthrough
 	default:
+		// @tallen
+		panic("wat 2")
 		return fmt.Errorf("unrecognized payload type: %v",
 			payload.payloadType)
 	}
@@ -255,5 +268,4 @@ func (m *flatbufMessage) Size() int {
 }
 
 func (m *flatbufMessage) Finalize(reason producer.FinalizeReason) {
-	msgflatbuf.ReturnBuilder(m.builder)
 }

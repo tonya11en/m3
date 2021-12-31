@@ -31,8 +31,6 @@ import (
 
 func TestSubscribe(t *testing.T) {
 	broker := newResourceBroker(context.Background())
-	assert.Nil(t, broker.Start())
-	defer broker.Stop()
 
 	s1 := make(chan *flatbuffers.Builder, 4)
 	s2 := make(chan *flatbuffers.Builder, 4)
@@ -92,8 +90,6 @@ func TestSubscribe(t *testing.T) {
 
 func TestUnsubscribe(t *testing.T) {
 	broker := newResourceBroker(context.Background())
-	assert.Nil(t, broker.Start())
-	defer broker.Stop()
 
 	s1 := make(chan *flatbuffers.Builder, 4)
 	s2 := make(chan *flatbuffers.Builder, 4)
@@ -132,16 +128,8 @@ func TestUnsubscribe(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func TestDoubleStart(t *testing.T) {
-	broker := newResourceBroker(context.TODO())
-	assert.Nil(t, broker.Start())
-
-	assert.NotNil(t, broker.Start())
-}
-
 func broadcastRunner(i int, b *testing.B) {
 	broker := newResourceBroker(context.TODO())
-	broker.Start()
 
 	// Setup.
 	for n := 0; n < i; n++ {

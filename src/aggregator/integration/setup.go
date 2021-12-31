@@ -190,12 +190,10 @@ func newTestServerSetup(t *testing.T, opts testServerOptions) *testServerSetup {
 	aggregatorOpts = aggregatorOpts.SetFlushManager(flushManager)
 
 	// Set up admin client.
-	m3msgOpts := aggclient.NewM3MsgOptions()
-	if opts.AggregatorClientType() == aggclient.M3MsgAggregatorClient {
-		producer, err := newM3MsgProducer(opts)
-		require.NoError(t, err)
-		m3msgOpts = m3msgOpts.SetProducer(producer)
-	}
+	gOpts := aggclient.NewGRPCOptions()
+	producer, err := newM3MsgProducer(opts)
+	require.NoError(t, err)
+	gOpts = gOpts.SetProducer(producer)
 
 	clientOpts := aggclient.NewOptions().
 		SetClockOptions(clockOpts).
@@ -203,16 +201,10 @@ func newTestServerSetup(t *testing.T, opts testServerOptions) *testServerSetup {
 		SetShardFn(opts.ShardFn()).
 		SetWatcherOptions(placementWatcherOpts).
 		SetRWOptions(rwOpts).
-		SetM3MsgOptions(m3msgOpts).
-		SetAggregatorClientType(opts.AggregatorClientType())
-	c, err := aggclient.NewClient(clientOpts)
-	require.NoError(t, err)
-	adminClient, ok := c.(aggclient.AdminClient)
-	require.True(t, ok)
-	require.NoError(t, adminClient.Init())
-	aggregatorOpts = aggregatorOpts.SetAdminClient(adminClient)
+		SetGRPCOptions(gOpts).
+		SetAggregatorClientType(aggclient.GRPCAggregatorClient)
 
-	testClientOpts := clientOpts.SetAggregatorClientType(opts.AggregatorClientType())
+	testClientOpts := clientOpts.SetAggregatorClientType(aggclient.GRPCAggregatorClient)
 
 	// Set up the handler.
 	var (
@@ -279,16 +271,14 @@ func newTestServerSetup(t *testing.T, opts testServerOptions) *testServerSetup {
 }
 
 func (ts *testServerSetup) newClient(t *testing.T) *client {
-	clientType := ts.opts.AggregatorClientType()
+	clientType := aggclient.GRPCAggregatorClient //ts.opts.AggregatorClientType()
 	clientOpts := ts.clientOptions.
 		SetAggregatorClientType(clientType)
 
-	if clientType == aggclient.M3MsgAggregatorClient {
-		producer, err := newM3MsgProducer(ts.opts)
-		require.NoError(t, err)
-		m3msgOpts := aggclient.NewM3MsgOptions().SetProducer(producer)
-		clientOpts = clientOpts.SetM3MsgOptions(m3msgOpts)
-	}
+	producer, err := newM3MsgProducer(ts.opts)
+	require.NoError(t, err)
+	gopts := aggclient.NewGRPCOptions().SetProducer(producer)
+	clientOpts = clientOpts.SetGRPCOptions(gopts)
 
 	testClient, err := aggclient.NewClient(clientOpts)
 	require.NoError(t, err)

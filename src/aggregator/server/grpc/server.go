@@ -46,18 +46,6 @@ const (
 )
 
 var (
-	builderPool = sync.Pool{
-		New: func() interface{} {
-			return flatbuffers.NewBuilder(bufferInitialCapacity)
-		},
-	}
-
-	messageProtoPool = sync.Pool{
-		New: func() interface{} {
-			return new(msgpb.Message)
-		},
-	}
-
 	metricUnionPool = sync.Pool{
 		New: func() interface{} {
 			return new(unaggregated.MetricUnion)
@@ -177,7 +165,9 @@ func (s *server) Close() {
 }
 
 func (s *server) WriteMessage(stream msgflatbuf.MessageWriter_WriteMessageServer) error {
+	fmt.Println("@tallen got inbound connection")
 	for {
+		fmt.Println("@tallen looping in write message")
 		msg, err := stream.Recv()
 		if err == io.EOF {
 			return nil
@@ -192,6 +182,7 @@ func (s *server) WriteMessage(stream msgflatbuf.MessageWriter_WriteMessageServer
 }
 
 func (s *server) processWriteMessage(msg *msgflatbuf.Message, stream msgflatbuf.MessageWriter_WriteMessageServer) {
+	fmt.Println("@tallen processing write message")
 	defer func() { <-s.activeRequestSem }()
 	buf := getBuffer()
 	defer returnBuffer(buf)
@@ -212,5 +203,8 @@ func (s *server) processWriteMessage(msg *msgflatbuf.Message, stream msgflatbuf.
 	offset := msgflatbuf.AckEnd(b)
 	b.Finish(offset)
 
-	stream.Send(b)
+	err := stream.Send(b)
+	if err != nil {
+		panic(err.Error())
+	}
 }

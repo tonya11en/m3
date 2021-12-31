@@ -22,6 +22,7 @@ package writer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	flatbuffers "github.com/google/flatbuffers/go"
@@ -65,7 +66,8 @@ func newGrpcShardWriter(numShards int, replicated bool) shardWriter {
 	// Create the write channels with buffers for higher throughput.
 	shardMsgBrokers := make([]*resourceBroker, numShards)
 	for idx := range shardMsgBrokers {
-		shardMsgBrokers[idx] = newResourceBroker(ctx)
+		broker := newResourceBroker(ctx)
+		shardMsgBrokers[idx] = broker
 	}
 
 	return &grpcShardWriter{
@@ -78,26 +80,15 @@ func newGrpcShardWriter(numShards int, replicated bool) shardWriter {
 	}
 }
 
-func (gw *grpcShardWriter) startNewStream(addr string, msgChan chan *flatbuffers.Builder, ackStream chan *metadata) {
-	streamWriter, err := newGRPCStreamWriter(gw.ctx, addr, msgChan, ackStream)
-	if err != nil {
-		// TODO @tallen handle properly
-		panic(err.Error())
-	}
-	streamWriter.Init()
-
-	// We'll now track the stream in the map.
-	gw.streamsMtx.Lock()
-	gw.activeStreams[addr] = streamWriter
-	gw.streamsMtx.Unlock()
-}
-
 func (gw *grpcShardWriter) Write(rm *producer.RefCountedMessage) {
+	fmt.Println("@tallen writing...")
 	// Just grab a reference to the channel with the read lock so that we don't starve out any thread
 	// trying to grab the writer lock.
 	gw.msgWriteMtx.RLock()
 	broker := gw.shardMsgBrokers[rm.Shard()]
 	gw.msgWriteMtx.RUnlock()
+
+	rm.Builder().FinishedBytes() // @tallen
 
 	if gw.replicatedTopic {
 		broker.Publish(rm.Builder())
@@ -109,11 +100,15 @@ func (gw *grpcShardWriter) Write(rm *producer.RefCountedMessage) {
 func (gw *grpcShardWriter) UpdateInstances(instances []placement.Instance, cws map[string]consumerWriter) {
 	newActiveStreams := make(map[string]*grpcStreamWriter, len(instances))
 
+	gw.streamsMtx.Lock()
+	defer gw.streamsMtx.Unlock()
+
 	for _, instance := range instances {
 		address := instance.Endpoint()
 		_, ok := gw.activeStreams[address]
 		if ok {
 			newActiveStreams[address] = gw.activeStreams[address]
+			delete(gw.activeStreams, address)
 			continue
 		}
 
@@ -136,6 +131,8 @@ func (gw *grpcShardWriter) UpdateInstances(instances []placement.Instance, cws m
 	for _, w := range gw.activeStreams {
 		w.Close()
 	}
+
+	gw.activeStreams = newActiveStreams
 }
 
 func (gw *grpcShardWriter) SetMessageTTLNanos(value int64) {
