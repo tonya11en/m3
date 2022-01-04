@@ -34,7 +34,6 @@ import (
 	"github.com/m3db/m3/src/metrics/encoding"
 	"github.com/m3db/m3/src/metrics/metric/unaggregated"
 	"github.com/m3db/m3/src/msg/generated/msgflatbuf"
-	"github.com/m3db/m3/src/msg/generated/proto/msgpb"
 )
 
 const (
@@ -121,15 +120,6 @@ func returnMetricUnion(mu *unaggregated.MetricUnion) {
 	metricUnionPool.Put(mu)
 }
 
-func getMessageProto() *msgpb.Message {
-	return bufferPool.Get().(*msgpb.Message)
-}
-
-func returnMessageProto(m *msgpb.Message) {
-	m.Reset()
-	bufferPool.Put(m)
-}
-
 func getBuffer() []byte {
 	return bufferPool.Get().([]byte)
 }
@@ -165,9 +155,7 @@ func (s *server) Close() {
 }
 
 func (s *server) WriteMessage(stream msgflatbuf.MessageWriter_WriteMessageServer) error {
-	fmt.Println("@tallen got inbound connection")
 	for {
-		fmt.Println("@tallen looping in write message")
 		msg, err := stream.Recv()
 		if err == io.EOF {
 			return nil
@@ -182,7 +170,6 @@ func (s *server) WriteMessage(stream msgflatbuf.MessageWriter_WriteMessageServer
 }
 
 func (s *server) processWriteMessage(msg *msgflatbuf.Message, stream msgflatbuf.MessageWriter_WriteMessageServer) {
-	fmt.Println("@tallen processing write message")
 	defer func() { <-s.activeRequestSem }()
 	buf := getBuffer()
 	defer returnBuffer(buf)
@@ -190,8 +177,6 @@ func (s *server) processWriteMessage(msg *msgflatbuf.Message, stream msgflatbuf.
 	if msg.ValueType() != msgflatbuf.MessageValueCounterWithMetadatas {
 		panic("@tallen not implemented yet..")
 	}
-
-	fmt.Printf("@tallen FAKE HANDLER CALL: shard=%d, type=%s\n", msg.Shard(), msg.ValueType().String())
 
 	b := msgflatbuf.GetBuilder()
 	defer func() { msgflatbuf.ReturnBuilder(b) }()
