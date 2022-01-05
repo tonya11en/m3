@@ -109,7 +109,7 @@ func (c *Configuration) newClientOptions(
 		SetInstrumentOptions(instrumentOpts).
 		SetRWOptions(rwOpts)
 
-	fmt.Printf("@tallen config: %v\n", c)
+	fmt.Printf("@tallen config: %+v\n", c)
 
 	grpcCfg := c.GRPC
 	if grpcCfg == nil {
