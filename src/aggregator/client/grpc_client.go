@@ -93,6 +93,7 @@ func (c *grpcClient) WriteUntimedCounter(
 	if err != nil {
 		panic(err.Error())
 	}
+
 	return c.write(msg)
 }
 
@@ -101,8 +102,23 @@ func (c *grpcClient) WriteUntimedBatchTimer(
 	batchTimer unaggregated.BatchTimer,
 	metadatas metadata.StagedMetadatas,
 ) error {
-	panic("@tallen unimplemented")
-	return nil
+	//	callStart := c.nowFn()
+	payload := payloadUnion{
+		payloadType: untimedType,
+		untimed: untimedPayload{
+			metric:    batchTimer.ToUnion(),
+			metadatas: metadatas,
+		},
+	}
+	msg := newFlatbufMessage()
+
+	shard := c.shardFn(payload.untimed.metric.ID, c.numShards)
+	err := msg.Encode(shard, payload)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return c.write(msg)
 }
 
 // WriteUntimedGauge writes untimed gauge metrics.
@@ -110,8 +126,24 @@ func (c *grpcClient) WriteUntimedGauge(
 	gauge unaggregated.Gauge,
 	metadatas metadata.StagedMetadatas,
 ) error {
-	panic("@tallen unimplemented")
-	return nil
+	//	callStart := c.nowFn()
+	payload := payloadUnion{
+		payloadType: untimedType,
+		untimed: untimedPayload{
+			metric:    gauge.ToUnion(),
+			metadatas: metadatas,
+		},
+	}
+
+	msg := newFlatbufMessage()
+
+	shard := c.shardFn(payload.untimed.metric.ID, c.numShards)
+	err := msg.Encode(shard, payload)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return c.write(msg)
 }
 
 // WriteTimed writes timed metrics.
@@ -164,8 +196,7 @@ func (c *grpcClient) Flush() error {
 }
 
 type flatbufMessage struct {
-	shard uint32
-
+	shard   uint32
 	buf     []byte
 	builder *flatbuffers.Builder
 }
@@ -183,55 +214,11 @@ func (m *flatbufMessage) Encode(
 	shard uint32,
 	payload payloadUnion) error {
 
-	var err error
 	m.shard = shard
 
 	switch payload.payloadType {
 	case untimedType:
-		switch payload.untimed.metric.Type {
-		case metric.CounterType:
-			// @tallen: Right now this is all we'll support for the demo...
-			numMetadatas := len(payload.untimed.metadatas)
-			metadatasOffsets := make([]flatbuffers.UOffsetT, numMetadatas)
-			for i, sm := range payload.untimed.metadatas {
-				metadatasOffsets[i], err = msgflatbuf.MakeStagedMetadataFlatbuf(&sm, m.builder)
-				if err != nil {
-					return err
-				}
-			}
-
-			annotationOffset := m.builder.CreateByteVector(payload.untimed.metric.Annotation)
-			idOffset := m.builder.CreateByteVector(payload.untimed.metric.ID)
-
-			msgflatbuf.CounterWithMetadatasStart(m.builder)
-			msgflatbuf.CounterWithMetadatasAddAnnotation(m.builder, annotationOffset)
-			msgflatbuf.CounterWithMetadatasAddId(m.builder, idOffset)
-			msgflatbuf.CounterWithMetadatasAddValue(m.builder, payload.untimed.metric.CounterVal)
-			valOffset := msgflatbuf.CounterWithMetadatasEnd(m.builder)
-
-			msgflatbuf.MessageStart(m.builder)
-			// omitting message ID..
-			msgflatbuf.MessageAddValue(m.builder, valOffset)
-			msgflatbuf.MessageAddValueType(m.builder, msgflatbuf.MessageValueCounterWithMetadatas)
-			// this is probably wrong
-			msgflatbuf.MessageAddSentAtNanos(m.builder, uint64(payload.untimed.metric.ClientTimeNanos))
-			msgflatbuf.MessageAddShard(m.builder, uint64(shard))
-			fin := msgflatbuf.MessageEnd(m.builder)
-
-			m.builder.Finish(fin)
-
-		case metric.TimerType:
-			//todo
-			fallthrough
-		case metric.GaugeType:
-			//todo
-			fallthrough
-		default:
-			// @tallen
-			panic("wat")
-			return fmt.Errorf("unrecognized metric type: %v",
-				payload.untimed.metric.Type)
-		}
+		return m.encodeUntimed(shard, &payload.untimed)
 	case forwardedType:
 		//todo
 		fallthrough
@@ -247,7 +234,133 @@ func (m *flatbufMessage) Encode(
 		return fmt.Errorf("unrecognized payload type: %v",
 			payload.payloadType)
 	}
+}
 
+// TODO @tallen: don't copy paste so much
+func (m *flatbufMessage) encodeUntimed(shard uint32, untimed *untimedPayload) error {
+	switch untimed.metric.Type {
+	case metric.CounterType:
+		// @tallen: Right now this is all we'll support for the demo...
+		m.encodeUntimedCounter(shard, untimed)
+	case metric.TimerType:
+		m.encodeUntimedGauge(shard, untimed)
+	case metric.GaugeType:
+		m.encodeUntimedBatchTimer(shard, untimed)
+	default:
+		panic("wat")
+		return fmt.Errorf("unrecognized metric type: %v", untimed.metric.Type)
+	}
+
+	return nil
+}
+
+func (m *flatbufMessage) encodeUntimedCounter(shard uint32, untimed *untimedPayload) error {
+	var err error
+	numMetadatas := len(untimed.metadatas)
+	metadatasOffsets := make([]flatbuffers.UOffsetT, numMetadatas)
+	for i, sm := range untimed.metadatas {
+		metadatasOffsets[i], err = msgflatbuf.MakeStagedMetadataFlatbuf(&sm, m.builder)
+		if err != nil {
+			return err
+		}
+	}
+
+	annotationOffset := m.builder.CreateByteVector(untimed.metric.Annotation)
+	idOffset := m.builder.CreateByteVector(untimed.metric.ID)
+
+	msgflatbuf.CounterWithMetadatasStart(m.builder)
+	msgflatbuf.CounterWithMetadatasAddAnnotation(m.builder, annotationOffset)
+	msgflatbuf.CounterWithMetadatasAddId(m.builder, idOffset)
+	msgflatbuf.CounterWithMetadatasAddValue(m.builder, untimed.metric.CounterVal)
+	valOffset := msgflatbuf.CounterWithMetadatasEnd(m.builder)
+
+	msgflatbuf.MessageStart(m.builder)
+	// omitting message ID..
+	msgflatbuf.MessageAddValue(m.builder, valOffset)
+	msgflatbuf.MessageAddValueType(m.builder, msgflatbuf.MessageValueCounterWithMetadatas)
+
+	// this is probably wrong
+	msgflatbuf.MessageAddSentAtNanos(m.builder, uint64(untimed.metric.ClientTimeNanos))
+	msgflatbuf.MessageAddShard(m.builder, uint64(shard))
+	fin := msgflatbuf.MessageEnd(m.builder)
+
+	m.builder.Finish(fin)
+	return nil
+}
+
+func (m *flatbufMessage) encodeUntimedGauge(shard uint32, untimed *untimedPayload) error {
+	var err error
+	numMetadatas := len(untimed.metadatas)
+	metadatasOffsets := make([]flatbuffers.UOffsetT, numMetadatas)
+	for i, sm := range untimed.metadatas {
+		metadatasOffsets[i], err = msgflatbuf.MakeStagedMetadataFlatbuf(&sm, m.builder)
+		if err != nil {
+			return err
+		}
+	}
+
+	annotationOffset := m.builder.CreateByteVector(untimed.metric.Annotation)
+	idOffset := m.builder.CreateByteVector(untimed.metric.ID)
+
+	msgflatbuf.GaugeWithMetadatasStart(m.builder)
+	msgflatbuf.GaugeWithMetadatasAddAnnotation(m.builder, annotationOffset)
+	msgflatbuf.GaugeWithMetadatasAddId(m.builder, idOffset)
+	msgflatbuf.GaugeWithMetadatasAddValue(m.builder, untimed.metric.GaugeVal)
+	valOffset := msgflatbuf.GaugeWithMetadatasEnd(m.builder)
+
+	msgflatbuf.MessageStart(m.builder)
+	// omitting message ID..
+	msgflatbuf.MessageAddValue(m.builder, valOffset)
+	msgflatbuf.MessageAddValueType(m.builder, msgflatbuf.MessageValueCounterWithMetadatas)
+
+	// this is probably wrong
+	msgflatbuf.MessageAddSentAtNanos(m.builder, uint64(untimed.metric.ClientTimeNanos))
+	msgflatbuf.MessageAddShard(m.builder, uint64(shard))
+	fin := msgflatbuf.MessageEnd(m.builder)
+
+	m.builder.Finish(fin)
+	return nil
+}
+
+func (m *flatbufMessage) encodeUntimedBatchTimer(shard uint32, untimed *untimedPayload) error {
+	var err error
+	numMetadatas := len(untimed.metadatas)
+	metadatasOffsets := make([]flatbuffers.UOffsetT, numMetadatas)
+	for i, sm := range untimed.metadatas {
+		metadatasOffsets[i], err = msgflatbuf.MakeStagedMetadataFlatbuf(&sm, m.builder)
+		if err != nil {
+			return err
+		}
+	}
+
+	annotationOffset := m.builder.CreateByteVector(untimed.metric.Annotation)
+	idOffset := m.builder.CreateByteVector(untimed.metric.ID)
+
+	btv := untimed.metric.BatchTimerVal
+	msgflatbuf.BatchTimerWithMetadatasStartValuesVector(m.builder, len(btv))
+	for i := len(btv) - 1; i >= 0; i-- {
+		m.builder.PrependFloat64(btv[i])
+	}
+	batchTimerValuesOffset := m.builder.EndVector(len(btv))
+
+	msgflatbuf.BatchTimerWithMetadatasAddValues(m.builder, batchTimerValuesOffset)
+	msgflatbuf.BatchTimerWithMetadatasStart(m.builder)
+	msgflatbuf.BatchTimerWithMetadatasAddAnnotation(m.builder, annotationOffset)
+	msgflatbuf.BatchTimerWithMetadatasAddId(m.builder, idOffset)
+
+	valOffset := msgflatbuf.GaugeWithMetadatasEnd(m.builder)
+
+	msgflatbuf.MessageStart(m.builder)
+	// omitting message ID..
+	msgflatbuf.MessageAddValue(m.builder, valOffset)
+	msgflatbuf.MessageAddValueType(m.builder, msgflatbuf.MessageValueCounterWithMetadatas)
+
+	// this is probably wrong
+	msgflatbuf.MessageAddSentAtNanos(m.builder, uint64(untimed.metric.ClientTimeNanos))
+	msgflatbuf.MessageAddShard(m.builder, uint64(shard))
+	fin := msgflatbuf.MessageEnd(m.builder)
+
+	m.builder.Finish(fin)
 	return nil
 }
 

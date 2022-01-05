@@ -1,2 +1,44 @@
-coordinator: {}
+#coordinator: {}
+coordinator:
+  # This is for sending metrics to the remote m3aggregators
+  downsample:
+    remoteAggregator:
+      client:
+        type: m3msg
+        m3msg:
+          producer:
+            writer:
+              topicName: aggregator_ingest
+              topicServiceOverride:
+                zone: embedded
+                environment: namespace/m3db-cluster-name
+              placement:
+                isStaged: true
+              placementServiceOverride:
+                namespaces:
+                  placement: /placement
+              connection:
+                numConnections: 4
+              messagePool:
+                size: 16384
+                watermark:
+                  low: 0.2
+                  high: 0.5
+
+  # This is for configuring the ingestion server that will receive metrics from the m3aggregators on port 7507
+  ingest:
+    ingester:
+      workerPoolSize: 10000
+      opPool:
+        size: 10000
+      retry:
+        maxRetries: 3
+        jitter: true
+      logSampleRate: 0.01
+    m3msg:
+      server:
+        listenAddress: "0.0.0.0:7507"
+        retry:
+          maxBackoff: 10s
+          jitter: true
 db: {}

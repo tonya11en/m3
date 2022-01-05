@@ -109,6 +109,31 @@ aggregator:
         - count: 1024
           capacity: 64
   client:
+    grpc:
+      producer:
+        buffer:
+          maxBufferSize: 1000000000 # max buffer before m3msg start dropping data.
+        writer:
+          topicName: aggregated_metrics
+          topicServiceOverride:
+            zone: embedded
+            environment: default_env
+          messageRetry:
+            initialBackoff: 1m
+            maxBackoff: 2m
+          messageQueueNewWritesScanInterval: 1s
+          ackErrorRetry:
+            initialBackoff: 2s
+            maxBackoff: 10s
+          connection:
+            dialTimeout: 5s
+            writeTimeout: 5s
+            retry:
+              initialBackoff: 1s
+              maxBackoff: 10s
+            flushInterval: 1s
+            writeBufferSize: 16384
+            readBufferSize: 256
     placementKV:
       namespace: /placement
       zone: embedded

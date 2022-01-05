@@ -56,7 +56,7 @@ func Serve(
 
 	fmt.Println("@tallen oh hi here we are")
 	fmt.Println("@tallen lolololol")
-	grpcAddr := "localhost:6002" // @tallen hardcoded
+	grpcAddr := opts.GRPCAddr()
 	grpcServer, err := grpcserver.NewServer(grpcAddr, aggregator)
 	if err != nil {
 		return fmt.Errorf("could not create gRPC server: addr=%s, err=%v", grpcAddr, err)
