@@ -32,6 +32,11 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/uber-go/tally"
+
 	"github.com/m3db/m3/src/dbnode/encoding"
 	"github.com/m3db/m3/src/dbnode/namespace"
 	"github.com/m3db/m3/src/dbnode/persist"
@@ -52,11 +57,6 @@ import (
 	"github.com/m3db/m3/src/x/pool"
 	xtest "github.com/m3db/m3/src/x/test"
 	xtime "github.com/m3db/m3/src/x/time"
-
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/uber-go/tally"
 )
 
 type testIncreasingIndex struct {
@@ -1229,12 +1229,12 @@ func TestShardTickRace(t *testing.T) {
 
 	wg.Add(2)
 	go func() {
-		shard.Tick(context.NewNoOpCanncellable(), xtime.Now(), namespace.Context{}) //nolint
+		shard.Tick(context.NewNoOpCanncellable(), xtime.Now(), namespace.Context{}) // nolint
 		wg.Done()
 	}()
 
 	go func() {
-		shard.Tick(context.NewNoOpCanncellable(), xtime.Now(), namespace.Context{}) //nolint
+		shard.Tick(context.NewNoOpCanncellable(), xtime.Now(), namespace.Context{}) // nolint
 		wg.Done()
 	}()
 
@@ -1381,7 +1381,7 @@ func TestShardTicksStopWhenClosing(t *testing.T) {
 
 	closeWg.Add(2)
 	go func() {
-		shard.Tick(context.NewNoOpCanncellable(), xtime.Now(), namespace.Context{}) //nolint
+		shard.Tick(context.NewNoOpCanncellable(), xtime.Now(), namespace.Context{}) // nolint
 		closeWg.Done()
 	}()
 
@@ -1628,79 +1628,6 @@ func TestShardRegisterRuntimeOptionsListeners(t *testing.T) {
 	shard.Close()
 
 	assert.Equal(t, 2, closer.called)
-}
-
-func TestShardFetchIndexChecksum(t *testing.T) {
-	dir, err := ioutil.TempDir("", "testdir")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
-
-	ctrl := xtest.NewController(t)
-	defer ctrl.Finish()
-
-	opts := DefaultTestOptions().
-		SetSeriesCachePolicy(series.CacheAll)
-	fsOpts := opts.CommitLogOptions().FilesystemOptions().
-		SetFilePathPrefix(dir)
-	opts = opts.
-		SetCommitLogOptions(opts.CommitLogOptions().
-			SetFilesystemOptions(fsOpts))
-	shard := testDatabaseShard(t, opts)
-	defer shard.Close()
-
-	ctx := context.NewBackground()
-	defer ctx.Close()
-
-	nsCtx := namespace.Context{ID: ident.StringID("foo")}
-	require.NoError(t, shard.Bootstrap(ctx, nsCtx))
-
-	ropts := shard.seriesOpts.RetentionOptions()
-	end := xtime.ToUnixNano(opts.ClockOptions().NowFn()()).Truncate(ropts.BlockSize())
-	start := end.Add(-2 * ropts.BlockSize())
-	shard.markWarmDataFlushStateSuccess(start)
-	shard.markWarmDataFlushStateSuccess(start.Add(ropts.BlockSize()))
-
-	retriever := block.NewMockDatabaseBlockRetriever(ctrl)
-	shard.setBlockRetriever(retriever)
-
-	var (
-		checksum = xio.WideEntry{
-			ID:               ident.StringID("foo"),
-			MetadataChecksum: 5,
-		}
-
-		wideEntry = block.NewMockStreamedWideEntry(ctrl)
-	)
-	retriever.EXPECT().
-		StreamWideEntry(ctx, shard.shard, ident.NewIDMatcher("foo"),
-			start, gomock.Any(), gomock.Any()).Return(wideEntry, nil).Times(2)
-
-	// First call to RetrieveWideEntry is expected to error on retrieval
-	wideEntry.EXPECT().RetrieveWideEntry().
-		Return(xio.WideEntry{}, errors.New("err"))
-	r, err := shard.FetchWideEntry(ctx, ident.StringID("foo"),
-		start, nil, namespace.Context{})
-	require.NoError(t, err)
-	_, err = r.RetrieveWideEntry()
-	assert.EqualError(t, err, "err")
-
-	wideEntry.EXPECT().RetrieveWideEntry().Return(checksum, nil)
-	r, err = shard.FetchWideEntry(ctx, ident.StringID("foo"),
-		start, nil, namespace.Context{})
-	require.NoError(t, err)
-	retrieved, err := r.RetrieveWideEntry()
-	require.NoError(t, err)
-	assert.Equal(t, checksum, retrieved)
-
-	// Check that nothing has been cached. Should be cached after a second.
-	time.Sleep(time.Second)
-
-	shard.RLock()
-	entry, err := shard.lookupEntryWithLock(ident.StringID("foo"))
-	shard.RUnlock()
-
-	require.Equal(t, err, errShardEntryNotFound)
-	require.Nil(t, entry)
 }
 
 func TestShardReadEncodedCachesSeriesWithRecentlyReadPolicy(t *testing.T) {
@@ -2036,10 +1963,72 @@ func TestSeriesRefResolver(t *testing.T) {
 	err = seriesRef.LoadBlock(databaseBlock, series.ColdWrite)
 	require.NoError(t, err)
 
-	err = resolver.ReleaseRef()
+	resolver.ReleaseRef()
+	resolverEntry.ReleaseRef()
+	entry := seriesRef.(*Entry)
+	require.Zero(t, entry.ReaderWriterCount())
+}
+
+// TestSeriesRefResolverAsync tests async resolver creation/closure for the same series
+// to validate proper ref counting.
+func TestSeriesRefResolverAsync(t *testing.T) {
+	ctrl := xtest.NewController(t)
+	shard := testDatabaseShard(t, DefaultTestOptions())
+	ctx := context.NewBackground()
+	defer func() {
+		ctrl.Finish()
+		_ = shard.Close()
+		ctx.Close()
+	}()
+
+	seriesID := ident.StringID("foo+bar=baz")
+	seriesTags := ident.NewTags(ident.Tag{
+		Name:  ident.StringID("bar"),
+		Value: ident.StringID("baz"),
+	})
+
+	iter := ident.NewTagsIterator(seriesTags)
+
+	// This resolution path is async due to the use of the index insert queue.
+	// When many entries for the same series are queued up at once, only one
+	// is persisted in the shard map. We induce this by spinning up N goroutines
+	// to cause an insert for the same series, and release them all at once.
+	// We then verify at the end that the ref counts are correctly freed for the
+	// entry ultimately in the shard map (i.e. it should have zero outstanding after
+	// every resolver is closed).
+	var (
+		start  sync.WaitGroup
+		finish sync.WaitGroup
+	)
+	start.Add(1)
+	for i := 0; i < 100; i++ {
+		i := i
+		finish.Add(1)
+		go func() {
+			start.Wait()
+
+			resolver, err := shard.SeriesRefResolver(seriesID, iter)
+			require.NoError(t, err)
+
+			if i%2 == 0 {
+				// Half the time exercise the ref retrieval path.
+				_, err = resolver.SeriesRef()
+				require.NoError(t, err)
+			}
+
+			resolver.ReleaseRef()
+
+			finish.Done()
+		}()
+	}
+
+	start.Done()
+	finish.Wait()
+
+	entryInShard, _, err := shard.TryRetrieveSeriesAndIncrementReaderWriterCount(seriesID)
 	require.NoError(t, err)
-	err = resolverEntry.ReleaseRef()
-	require.NoError(t, err)
+	entryInShard.DecrementReaderWriterCount() // Decrement because the above retrieval increments.
+	require.Equal(t, int32(0), entryInShard.ReaderWriterCount())
 }
 
 func getMockReader(

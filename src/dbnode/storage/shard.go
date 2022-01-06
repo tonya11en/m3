@@ -33,7 +33,6 @@ import (
 	"github.com/m3db/m3/src/dbnode/namespace"
 	"github.com/m3db/m3/src/dbnode/persist"
 	"github.com/m3db/m3/src/dbnode/persist/fs"
-	"github.com/m3db/m3/src/dbnode/persist/schema"
 	"github.com/m3db/m3/src/dbnode/retention"
 	"github.com/m3db/m3/src/dbnode/runtime"
 	"github.com/m3db/m3/src/dbnode/storage/block"
@@ -152,6 +151,8 @@ type dbShard struct {
 	shard                    uint32
 	coldWritesEnabled        bool
 	indexEnabled             bool
+
+	entryMetrics *EntryMetrics
 }
 
 // NB(r): dbShardRuntimeOptions does not contain its own
@@ -183,6 +184,8 @@ type dbShardMetrics struct {
 	snapshotChecksumLatency             tally.Timer
 	snapshotPersistLatency              tally.Timer
 	snapshotCloseLatency                tally.Timer
+
+	purgeUnexpectedRefCount tally.Counter
 }
 
 func newDatabaseShardMetrics(shardID uint32, scope tally.Scope) dbShardMetrics {
@@ -220,6 +223,7 @@ func newDatabaseShardMetrics(shardID uint32, scope tally.Scope) dbShardMetrics {
 		snapshotChecksumLatency:           snapshotScope.Timer("checksum-latency"),
 		snapshotPersistLatency:            snapshotScope.Timer("persist-latency"),
 		snapshotCloseLatency:              snapshotScope.Timer("close-latency"),
+		purgeUnexpectedRefCount:           scope.Counter("purge-unexpected-ref-count"),
 	}
 }
 
@@ -285,6 +289,7 @@ func newDatabaseShard(
 		logger:               opts.InstrumentOptions().Logger(),
 		metrics:              newDatabaseShardMetrics(shard, scope),
 		tileAggregator:       opts.TileAggregator(),
+		entryMetrics:         NewEntryMetrics(scope.SubScope("entries")),
 	}
 	s.insertQueue = newDatabaseShardInsertQueue(s.insertSeriesBatch,
 		s.nowFn, opts.CoreFn(), scope, opts.InstrumentOptions().Logger())
@@ -353,18 +358,6 @@ func (s *dbShard) Stream(
 ) (xio.BlockReader, error) {
 	return s.DatabaseBlockRetriever.Stream(ctx, s.shard, id,
 		blockStart, onRetrieve, nsCtx)
-}
-
-// StreamWideEntry implements series.QueryableBlockRetriever
-func (s *dbShard) StreamWideEntry(
-	ctx context.Context,
-	id ident.ID,
-	blockStart xtime.UnixNano,
-	filter schema.WideEntryFilter,
-	nsCtx namespace.Context,
-) (block.StreamedWideEntry, error) {
-	return s.DatabaseBlockRetriever.StreamWideEntry(ctx, s.shard, id,
-		blockStart, filter, nsCtx)
 }
 
 // IsBlockRetrievable implements series.QueryableBlockRetriever
@@ -836,11 +829,14 @@ func (s *dbShard) purgeExpiredSeries(expiredEntries []*Entry) {
 		count := entry.ReaderWriterCount()
 		// The contract requires all entries to have count >= 1.
 		if count < 1 {
-			s.logger.Error("purgeExpiredSeries encountered invalid series read/write count",
-				zap.Stringer("namespace", s.namespace.ID()),
-				zap.Uint32("shard", s.ID()),
-				zap.Stringer("series", series.ID()),
-				zap.Int32("readerWriterCount", count))
+			s.metrics.purgeUnexpectedRefCount.Inc(1)
+			instrument.EmitAndLogInvariantViolation(s.opts.InstrumentOptions(), func(l *zap.Logger) {
+				l.Error("purgeExpiredSeries encountered invalid series read/write count",
+					zap.Stringer("namespace", s.namespace.ID()),
+					zap.Uint32("shard", s.ID()),
+					zap.Stringer("series", series.ID()),
+					zap.Int32("readerWriterCount", count))
+			})
 			continue
 		}
 		// If this series is currently being written to or read from, we don't
@@ -1037,7 +1033,7 @@ func (s *dbShard) SeriesRefResolver(
 	tags ident.TagIterator,
 ) (bootstrap.SeriesRefResolver, error) {
 	// Try retrieve existing series.
-	entry, err := s.retrieveWritableSeries(id)
+	entry, err := s.retrieveWritableSeriesAndIncrementReaderWriterCount(id)
 	if err != nil {
 		return nil, err
 	}
@@ -1051,8 +1047,13 @@ func (s *dbShard) SeriesRefResolver(
 	if err != nil {
 		return nil, err
 	}
-	// increment ref count to avoid expiration of the new entry just after adding it to the queue.
+
+	// Increment ref count to avoid expiration of the new entry just after adding it to the queue.
+	// It is possible that this entry does not end up as the one in the shard. Therefore, the resolver
+	// for this specific entry is responsible for closing, and there should always be one resolver
+	// responsible for the one that DOES end up in the shard.
 	entry.IncrementReaderWriterCount()
+
 	wg, err := s.insertQueue.Insert(dbShardInsert{
 		entry: entry,
 		opts: dbShardInsertAsyncOptions{
@@ -1071,9 +1072,8 @@ func (s *dbShard) SeriesRefResolver(
 	// Series will wait for the result to be batched together and inserted.
 	return NewSeriesResolver(
 		wg,
-		// ID was already copied in newShardEntry so we can set it here safely.
-		entry.Series.ID(),
-		s.retrieveWritableSeries), nil
+		entry,
+		s.retrieveWritableSeriesAndIncrementReaderWriterCount), nil
 }
 
 func (s *dbShard) ReadEncoded(
@@ -1113,20 +1113,6 @@ func (s *dbShard) ReadEncoded(
 	return reader.ReadEncoded(ctx, start, end, nsCtx)
 }
 
-func (s *dbShard) FetchWideEntry(
-	ctx context.Context,
-	id ident.ID,
-	blockStart xtime.UnixNano,
-	filter schema.WideEntryFilter,
-	nsCtx namespace.Context,
-) (block.StreamedWideEntry, error) {
-	retriever := s.seriesBlockRetriever
-	opts := s.seriesOpts
-	reader := series.NewReaderUsingRetriever(id, retriever, nil, nil, opts)
-
-	return reader.FetchWideEntry(ctx, blockStart, filter, nsCtx)
-}
-
 // lookupEntryWithLock returns the entry for a given id while holding a read lock or a write lock.
 func (s *dbShard) lookupEntryWithLock(id ident.ID) (*Entry, error) {
 	if s.state != dbShardStateOpen {
@@ -1143,7 +1129,7 @@ func (s *dbShard) lookupEntryWithLock(id ident.ID) (*Entry, error) {
 
 func (s *dbShard) writableSeries(id ident.ID, tagResolver convert.TagMetadataResolver) (*Entry, error) {
 	for {
-		entry, err := s.retrieveWritableSeries(id)
+		entry, err := s.retrieveWritableSeriesAndIncrementReaderWriterCount(id)
 		if entry != nil {
 			return entry, nil
 		}
@@ -1192,7 +1178,7 @@ func (s *dbShard) TryRetrieveSeriesAndIncrementReaderWriterCount(id ident.ID) (
 	return nil, opts, nil
 }
 
-func (s *dbShard) retrieveWritableSeries(id ident.ID) (*Entry, error) {
+func (s *dbShard) retrieveWritableSeriesAndIncrementReaderWriterCount(id ident.ID) (*Entry, error) {
 	entry, _, err := s.TryRetrieveSeriesAndIncrementReaderWriterCount(id)
 	return entry, err
 }
@@ -1237,11 +1223,12 @@ func (s *dbShard) newShardEntry(
 		Options:                s.seriesOpts,
 	})
 	return NewEntry(NewEntryOptions{
-		Shard:       s,
-		Series:      newSeries,
-		Index:       uniqueIndex,
-		IndexWriter: s.reverseIndex,
-		NowFn:       s.nowFn,
+		Shard:        s,
+		Series:       newSeries,
+		Index:        uniqueIndex,
+		IndexWriter:  s.reverseIndex,
+		NowFn:        s.nowFn,
+		EntryMetrics: s.entryMetrics,
 	}), nil
 }
 
