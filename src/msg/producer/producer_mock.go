@@ -30,6 +30,7 @@ import (
 	"github.com/m3db/m3/src/cluster/services"
 
 	"github.com/golang/mock/gomock"
+	flatbuffers "github.com/google/flatbuffers/go"
 )
 
 // MockMessage is a mock of Message interface.
@@ -53,6 +54,20 @@ func NewMockMessage(ctrl *gomock.Controller) *MockMessage {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockMessage) EXPECT() *MockMessageMockRecorder {
 	return m.recorder
+}
+
+// Builder mocks base method.
+func (m *MockMessage) Builder() *flatbuffers.Builder {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Builder")
+	ret0, _ := ret[0].(*flatbuffers.Builder)
+	return ret0
+}
+
+// Builder indicates an expected call of Builder.
+func (mr *MockMessageMockRecorder) Builder() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Builder", reflect.TypeOf((*MockMessage)(nil).Builder))
 }
 
 // Bytes mocks base method.

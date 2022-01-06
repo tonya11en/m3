@@ -25,8 +25,8 @@ import (
 	"time"
 
 	"github.com/m3db/m3/src/aggregator/aggregator"
+	grpcserver "github.com/m3db/m3/src/aggregator/server/grpc"
 	httpserver "github.com/m3db/m3/src/aggregator/server/http"
-	m3msgserver "github.com/m3db/m3/src/aggregator/server/m3msg"
 	rawtcpserver "github.com/m3db/m3/src/aggregator/server/rawtcp"
 	xdebug "github.com/m3db/m3/src/x/debug"
 
@@ -57,14 +57,17 @@ func Serve(
 		}
 	}()
 
+	// @@tallen - replaced this with grpc!
 	if m3msgAddr := opts.M3MsgAddr(); m3msgAddr != "" {
-		serverOpts := opts.M3MsgServerOpts()
-		m3msgServer, err := m3msgserver.NewServer(m3msgAddr, aggregator, serverOpts)
+		//serverOpts := opts.M3MsgServerOpts()
+		//m3msgServer, err := m3msgserver.NewServer(m3msgAddr, aggregator, serverOpts)
+		fmt.Println("@tallen creating grpc agg server instead of m3msg")
+		m3msgServer, err := grpcserver.NewServer(m3msgAddr, aggregator)
 		if err != nil {
-			return fmt.Errorf("could not create m3msg server: addr=%s, err=%v", m3msgAddr, err)
+			return fmt.Errorf("could not create grpc server: addr=%s, err=%v", m3msgAddr, err)
 		}
 		if err := m3msgServer.ListenAndServe(); err != nil {
-			return fmt.Errorf("could not start m3msg server at: addr=%s, err=%v", m3msgAddr, err)
+			return fmt.Errorf("could not start grpc server at: addr=%s, err=%v", m3msgAddr, err)
 		}
 
 		defer func() {

@@ -1,0 +1,208 @@
+// Message... TODO
+ 
+namespace msgflatbuf;
+
+union MessageValue { 
+  Metric,
+  ChunkedMetric,
+  AggregatedMetricWithStoragePolicy,
+  ChunkedMetricWithStoragePolicy,
+  ForwardedMetricWithMetadata,
+  TimedMetricWithMetadata,
+  TimedMetricWithMetadatas,
+  PassthroughMetricWithMetadata,
+  CounterWithMetadatas,
+  GaugeWithMetadatas,
+  BatchTimerWithMetadatas,
+}
+
+table Message {
+  // This will go unused for now...
+  value:MessageValue;
+
+  // This is simply whatever would be in the m3msg buffer.
+  msg_value:[byte];
+
+  // We choose to embed the message metadata as flat fields in the message, rather than nesting
+  // another table into the buffer.
+  shard:ulong;
+  id:ulong;
+  sent_at_nanos:ulong;
+}
+
+table Metric {
+  id:[byte];
+  annotation:[byte];
+  type:int;
+  time_nanos:long;
+  value:double;
+}
+
+table ChunkedMetric {
+  id_prefix:[byte];
+  id_data:[byte];
+  id_suffix:[byte];
+  annotation:[byte];
+  time_nanos:long;
+  value:double;
+}
+
+table AggregatedMetricWithStoragePolicy {
+  metric:Metric;
+  storage_policy:StoragePolicy;
+}
+
+table ChunkedMetricWithStoragePolicy {
+  chunked_metric:ChunkedMetric;
+  storage_policy:StoragePolicy;
+}
+
+table ForwardedMetricWithMetadata {
+  id:[byte];
+  values:[double];
+  prev_values:[double];
+  annotation:[byte]; 
+  type:int;
+  time_nanos:long;
+  version:uint;
+  metadata:ForwardedMetadata;
+}
+
+table TimedMetric {
+  id:[byte];
+  annotation:[byte];
+  type:int;
+  time_nanos:long;
+  value:double;
+}
+
+table TimedMetricWithMetadata {
+  metric:Metric;
+  metadata:TimedMetadata;
+}
+
+table TimedMetricWithMetadatas {
+  metric:Metric;
+  staged_metadatas:[StagedMetadata];
+}
+
+table PassthroughMetricWithMetadata {
+  metric:Metric;
+  storage_policy:StoragePolicy;
+}
+
+//---------------------------------------------------------------------------------------------------- 
+table CounterWithMetadatas {
+  id:string;
+  annotation:[byte];
+  value:long;
+  client_time_nanos:long;
+  metadatas:[StagedMetadata];
+}
+
+table GaugeWithMetadatas {
+  id:string;
+  annotation:[byte];
+  value:double;
+  client_time_nanos:long;
+  metadatas:[StagedMetadata];
+}
+
+table BatchTimerWithMetadatas {
+  id:string;
+  annotation:[byte];
+  values:[double];
+  client_time_nanos:long;
+  metadatas:[StagedMetadata];
+}
+
+
+//----------------------------------------------------------------------------------------------------
+
+table ForwardedMetadata {
+  pipeline:Pipeline;
+  storage_policy:StoragePolicy;
+  aggregation_id:[ulong];
+  num_forwarded_times:int;
+  source_id:uint;
+  resend_enabled:bool;
+}
+
+struct Resolution {
+  window:long;
+  precision:long;
+}
+
+table StoragePolicy {
+  resolution:Resolution;
+  retention:long;
+}
+
+table RollupOp {
+  id:string;
+  aggregation_id:[ulong];
+}
+
+table TransformationOp {
+  type:int;
+}
+
+table Pipeline {
+  operations:[OpUnion];
+}
+
+table OpUnion {
+  rollup:RollupOp;
+  type:int;
+  transformation:TransformationOp;
+}
+
+table Tag {
+  name:string;
+  value:string;
+}
+
+table GraphitePrefix {
+  prefix:string;
+}
+
+table PipelineMetadata {
+  storage_policies:[StoragePolicy];
+  pipeline:Pipeline;
+  tags:[Tag];
+  graphite_prefix:[GraphitePrefix];
+  aggregation_id:[ulong];
+  drop_policy:uint;
+  resend_enabled:bool;
+}
+
+table Metadata {
+  pipelines:[PipelineMetadata];
+}
+
+table StagedMetadata {
+  metadata:Metadata;
+  cutover_nanos:long;
+  tombstoned:bool;
+}
+
+table TimedMetadata {
+  aggregation_id:[ulong];
+  storage_policy:[StoragePolicy];
+}
+
+ 
+// The protobuf version of this Ack has a repeated metadata field. However, this flatbuffer gRPC
+// service id a bidirectional stream, so a single message may result in multiple streaming Acks.
+// This is done to simplify the creation of the message flatbuffer.
+table Ack {
+  shard:ulong;
+  id:ulong;
+  sent_at_nanos:ulong;
+}
+
+rpc_service MessageWriter {
+  WriteMessage(Message):Ack (streaming: "bidi");
+}
+ 
+root_type Message;
