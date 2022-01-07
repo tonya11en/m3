@@ -170,10 +170,10 @@ func initShardWriters(
 		switch ct {
 		case topic.Shared:
 			//			sws[i] = newSharedShardWriter(uint32(i), router, mPool, opts, m)
-			sws[i] = newGrpcShardWriter(i, false)
+			sws[i] = newGrpcShardWriter(numberOfShards, false)
 		case topic.Replicated:
 			//			sws[i] = newReplicatedShardWriter(uint32(i), numberOfShards, router, mPool, opts, m)
-			sws[i] = newGrpcShardWriter(i, true)
+			sws[i] = newGrpcShardWriter(numberOfShards, true)
 		}
 	}
 	return sws

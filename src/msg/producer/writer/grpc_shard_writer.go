@@ -60,7 +60,8 @@ type grpcShardWriter struct {
 	activeStreams map[string]*grpcStreamWriter
 }
 
-func newGrpcShardWriter(numShards int, replicated bool) shardWriter {
+func newGrpcShardWriter(numShards uint32, replicated bool) shardWriter {
+	fmt.Println("@tallen creating shard writer")
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create the write channels with buffers for higher throughput.
@@ -98,6 +99,7 @@ func (gw *grpcShardWriter) Write(rm *producer.RefCountedMessage) {
 }
 
 func (gw *grpcShardWriter) UpdateInstances(instances []placement.Instance, cws map[string]consumerWriter) {
+	fmt.Printf("@tallen updating instances: %+v\n", instances)
 	newActiveStreams := make(map[string]*grpcStreamWriter, len(instances))
 
 	gw.streamsMtx.Lock()
