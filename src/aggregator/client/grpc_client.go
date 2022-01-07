@@ -339,6 +339,7 @@ func (m *flatbufMessage) encodeUntimedBatchTimer(shard uint32, untimed *untimedP
 	idOffset := m.builder.CreateByteVector(untimed.metric.ID)
 
 	btv := untimed.metric.BatchTimerVal
+	fmt.Printf("@tallen metric (for batch timer) output = %+v\n", untimed.metric)
 	msgflatbuf.BatchTimerWithMetadatasStartValuesVector(m.builder, len(btv))
 	for i := len(btv) - 1; i >= 0; i-- {
 		m.builder.PrependFloat64(btv[i])
