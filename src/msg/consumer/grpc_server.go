@@ -96,6 +96,11 @@ func (s *GrpcConsumerServer) WriteMessage(stream msgflatbuf.MessageWriter_WriteM
 			return err
 		}
 
+		// @tallen so it doesn't panic, we'll just drop writes that aren't counters.
+		if msg.ValueType() != msgflatbuf.MessageValueCounterWithMetadatas {
+			continue
+		}
+
 		s.activeRequestSem <- struct{}{}
 		go func() {
 			defer func() { <-s.activeRequestSem }()

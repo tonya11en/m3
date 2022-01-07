@@ -248,8 +248,9 @@ func (m *flatbufMessage) encodeUntimed(shard uint32, untimed *untimedPayload) er
 	case metric.GaugeType:
 		m.encodeUntimedBatchTimer(shard, untimed)
 	default:
-		panic("wat")
-		return fmt.Errorf("unrecognized metric type: %v", untimed.metric.Type)
+		// @tallen I don't want to panic, just ignore metrics I haven't implemented yet.
+		return nil
+		//return fmt.Errorf("unrecognized metric type: %v", untimed.metric.Type)
 	}
 
 	return nil
