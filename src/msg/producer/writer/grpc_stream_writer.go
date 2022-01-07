@@ -57,7 +57,7 @@ func newGRPCStreamWriter(ctx context.Context, addr string, msgChan <-chan *flatb
 		ackChan: ackChan,
 	}
 
-	fmt.Println("@tallen done making grpc client")
+	fmt.Println("@tallen done making grpc client:", addr)
 	// TODO more
 
 	return &gclient, nil

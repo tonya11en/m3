@@ -79,7 +79,7 @@ type Options struct{}
 // TODO: add options
 // Returns a new gRPC aggregator server.
 func NewServer(address string, agg aggregator.Aggregator) (*consumer.GrpcConsumerServer, error) {
-	fmt.Println("@tallen creating new aggregator grpc server")
+	fmt.Println("@tallen creating new aggregator grpc server: ", address)
 	fn := func(msg *msgflatbuf.Message) chan *consumer.AckInfo {
 		return processFn(msg, agg)
 	}
