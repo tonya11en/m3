@@ -674,6 +674,7 @@ type RemoteAggregatorConfiguration struct {
 	clientOverride client.Client
 }
 
+// @tallen new remote agg client!
 func (c RemoteAggregatorConfiguration) newClient(
 	kvClient clusterclient.Client,
 	clockOpts clock.Options,

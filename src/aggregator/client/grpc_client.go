@@ -43,6 +43,7 @@ type grpcClient struct {
 }
 
 func NewGRPCClient(opts Options) (Client, error) {
+	fmt.Println("@tallen creating new grpc client (agg)")
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}

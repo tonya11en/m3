@@ -21,6 +21,7 @@
 package grpc
 
 import (
+	"fmt"
 	"net"
 	"sync"
 
@@ -78,6 +79,7 @@ type Options struct{}
 // TODO: add options
 // Returns a new gRPC aggregator server.
 func NewServer(address string, agg aggregator.Aggregator) (*consumer.GrpcConsumerServer, error) {
+	fmt.Println("@tallen creating new aggregator grpc server")
 	fn := func(msg *msgflatbuf.Message) chan *consumer.AckInfo {
 		return processFn(msg, agg)
 	}
@@ -165,6 +167,7 @@ func processFn(msg *msgflatbuf.Message, agg aggregator.Aggregator) chan *consume
 	case msgflatbuf.MessageValueGaugeWithMetadatas:
 		fallthrough
 	case msgflatbuf.MessageValueBatchTimerWithMetadatas:
+		fmt.Printf("@tallen type unsupported %s\n", msg.ValueType().String())
 		panic("@tallen unsupported!!")
 	}
 

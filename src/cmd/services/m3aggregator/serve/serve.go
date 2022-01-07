@@ -72,12 +72,12 @@ func Serve(
 
 		defer func() {
 			start := time.Now()
-			closeLogger.Info("closing m3msg server")
+			closeLogger.Info("closing grpc server")
 			m3msgServer.Close()
 			closeLogger.Info("m3msg server closed", zap.String("took", time.Since(start).String()))
 		}()
 
-		log.Info("m3msg server listening", zap.String("addr", m3msgAddr))
+		log.Info("grpc server listening", zap.String("addr", m3msgAddr))
 	}
 
 	if rawTCPAddr := opts.RawTCPAddr(); rawTCPAddr != "" {
