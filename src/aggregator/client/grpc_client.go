@@ -243,9 +243,9 @@ func (m *flatbufMessage) encodeUntimed(shard uint32, untimed *untimedPayload) er
 	case metric.CounterType:
 		// @tallen: Right now this is all we'll support for the demo...
 		m.encodeUntimedCounter(shard, untimed)
-	case metric.TimerType:
-		m.encodeUntimedGauge(shard, untimed)
 	case metric.GaugeType:
+		m.encodeUntimedGauge(shard, untimed)
+	case metric.TimerType:
 		m.encodeUntimedBatchTimer(shard, untimed)
 	default:
 		// @tallen I don't want to panic, just ignore metrics I haven't implemented yet.
