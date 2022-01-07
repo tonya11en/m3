@@ -78,9 +78,9 @@ func (cm *CounterWithMetadatas) FromFlatbuffer(buf *msgflatbuf.CounterWithMetada
 	cm.ClientTimeNanos = xtime.UnixNano(buf.ClientTimeNanos())
 	cm.StagedMetadatas = make([]metadata.StagedMetadata, buf.MetadatasLength())
 
-	smbuf := new(msgflatbuf.StagedMetadata)
 	var err error
 	for i := 0; i < buf.MetadatasLength(); i++ {
+		smbuf := new(msgflatbuf.StagedMetadata)
 		if buf.Metadatas(smbuf, i) {
 			cm.StagedMetadatas[i], err = getStagedMetadata(smbuf)
 			if err != nil {
@@ -106,9 +106,9 @@ func (bt *BatchTimerWithMetadatas) FromFlatbuffer(buf *msgflatbuf.BatchTimerWith
 		bt.Values[i] = buf.Values(i)
 	}
 
-	smbuf := new(msgflatbuf.StagedMetadata)
 	var err error
 	for i := 0; i < buf.MetadatasLength(); i++ {
+		smbuf := new(msgflatbuf.StagedMetadata)
 		if buf.Metadatas(smbuf, i) {
 			bt.StagedMetadatas[i], err = getStagedMetadata(smbuf)
 			if err != nil {
@@ -130,9 +130,9 @@ func (g *GaugeWithMetadatas) FromFlatbuffer(buf *msgflatbuf.GaugeWithMetadatas) 
 	g.ClientTimeNanos = xtime.UnixNano(buf.ClientTimeNanos())
 	g.StagedMetadatas = make([]metadata.StagedMetadata, buf.MetadatasLength())
 
-	smbuf := new(msgflatbuf.StagedMetadata)
 	var err error
 	for i := 0; i < buf.MetadatasLength(); i++ {
+		smbuf := new(msgflatbuf.StagedMetadata)
 		if buf.Metadatas(smbuf, i) {
 			g.StagedMetadatas[i], err = getStagedMetadata(smbuf)
 			if err != nil {
