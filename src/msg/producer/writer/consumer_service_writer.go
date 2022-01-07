@@ -159,7 +159,14 @@ func initShardWriters(
 	opts Options,
 ) []shardWriter {
 	var (
-		sws   = make([]shardWriter, numberOfShards)
+		sws = make([]shardWriter, numberOfShards)
+
+		m = newMessageWriterMetrics(
+			opts.InstrumentOptions().MetricsScope(),
+			opts.InstrumentOptions().TimerOptions(),
+			opts.WithoutConsumerScope(),
+		)
+
 		mPool messagePool
 	)
 	if opts.MessagePoolOptions() != nil {
@@ -168,9 +175,13 @@ func initShardWriters(
 	}
 	for i := range sws {
 		switch ct {
+		// @tallen
+		// this fishy business is going on because I think shared topics are used for
+		// communication of aggregated metrics to the coord, but replicated is used for unaggregated
+		// metrics to the aggregator.
 		case topic.Shared:
-			//			sws[i] = newSharedShardWriter(uint32(i), router, mPool, opts, m)
-			sws[i] = newGrpcShardWriter(numberOfShards, false)
+			sws[i] = newSharedShardWriter(uint32(i), router, mPool, opts, m)
+			//sws[i] = newGrpcShardWriter(numberOfShards, false)
 		case topic.Replicated:
 			//			sws[i] = newReplicatedShardWriter(uint32(i), numberOfShards, router, mPool, opts, m)
 			sws[i] = newGrpcShardWriter(numberOfShards, true)
