@@ -89,6 +89,8 @@ func (c *grpcClient) WriteUntimedCounter(
 	}
 	msg := newFlatbufMessage()
 
+	fmt.Printf("@tallen writing untimed counter with metadatas %+v", metadatas)
+
 	shard := c.shardFn(payload.untimed.metric.ID, c.numShards)
 	err := msg.Encode(shard, payload)
 	if err != nil {
@@ -267,10 +269,17 @@ func (m *flatbufMessage) encodeUntimedCounter(shard uint32, untimed *untimedPayl
 		}
 	}
 
+	msgflatbuf.CounterWithMetadatasStartMetadatasVector(m.builder, numMetadatas)
+	for i := numMetadatas - 1; i >= 0; i-- {
+		m.builder.PrependUOffsetT(metadatasOffsets[i])
+	}
+	mdatasOffset := m.builder.EndVector(numMetadatas)
+
 	annotationOffset := m.builder.CreateByteVector(untimed.metric.Annotation)
 	idOffset := m.builder.CreateByteVector(untimed.metric.ID)
 
 	msgflatbuf.CounterWithMetadatasStart(m.builder)
+	msgflatbuf.CounterWithMetadatasAddMetadatas(m.builder, mdatasOffset)
 	msgflatbuf.CounterWithMetadatasAddAnnotation(m.builder, annotationOffset)
 	msgflatbuf.CounterWithMetadatasAddId(m.builder, idOffset)
 	msgflatbuf.CounterWithMetadatasAddValue(m.builder, untimed.metric.CounterVal)
@@ -301,10 +310,17 @@ func (m *flatbufMessage) encodeUntimedGauge(shard uint32, untimed *untimedPayloa
 		}
 	}
 
+	msgflatbuf.GaugeWithMetadatasStartMetadatasVector(m.builder, numMetadatas)
+	for i := numMetadatas - 1; i >= 0; i-- {
+		m.builder.PrependUOffsetT(metadatasOffsets[i])
+	}
+	mdatasOffset := m.builder.EndVector(numMetadatas)
+
 	annotationOffset := m.builder.CreateByteVector(untimed.metric.Annotation)
 	idOffset := m.builder.CreateByteVector(untimed.metric.ID)
 
 	msgflatbuf.GaugeWithMetadatasStart(m.builder)
+	msgflatbuf.GaugeWithMetadatasAddMetadatas(m.builder, mdatasOffset)
 	msgflatbuf.GaugeWithMetadatasAddAnnotation(m.builder, annotationOffset)
 	msgflatbuf.GaugeWithMetadatasAddId(m.builder, idOffset)
 	msgflatbuf.GaugeWithMetadatasAddValue(m.builder, untimed.metric.GaugeVal)
@@ -335,6 +351,12 @@ func (m *flatbufMessage) encodeUntimedBatchTimer(shard uint32, untimed *untimedP
 		}
 	}
 
+	msgflatbuf.BatchTimerWithMetadatasStartMetadatasVector(m.builder, numMetadatas)
+	for i := numMetadatas - 1; i >= 0; i-- {
+		m.builder.PrependUOffsetT(metadatasOffsets[i])
+	}
+	mdatasOffset := m.builder.EndVector(numMetadatas)
+
 	annotationOffset := m.builder.CreateByteVector(untimed.metric.Annotation)
 	idOffset := m.builder.CreateByteVector(untimed.metric.ID)
 
@@ -346,12 +368,12 @@ func (m *flatbufMessage) encodeUntimedBatchTimer(shard uint32, untimed *untimedP
 	}
 	batchTimerValuesOffset := m.builder.EndVector(len(btv))
 
-	msgflatbuf.BatchTimerWithMetadatasAddValues(m.builder, batchTimerValuesOffset)
 	msgflatbuf.BatchTimerWithMetadatasStart(m.builder)
+	msgflatbuf.BatchTimerWithMetadatasAddValues(m.builder, batchTimerValuesOffset)
 	msgflatbuf.BatchTimerWithMetadatasAddAnnotation(m.builder, annotationOffset)
 	msgflatbuf.BatchTimerWithMetadatasAddId(m.builder, idOffset)
-
-	valOffset := msgflatbuf.GaugeWithMetadatasEnd(m.builder)
+	msgflatbuf.BatchTimerWithMetadatasAddMetadatas(m.builder, mdatasOffset)
+	valOffset := msgflatbuf.BatchTimerWithMetadatasEnd(m.builder)
 
 	msgflatbuf.MessageStart(m.builder)
 	// omitting message ID..
