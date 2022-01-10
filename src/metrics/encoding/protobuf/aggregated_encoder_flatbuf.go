@@ -46,17 +46,9 @@ func (enc *aggregatedFlatbufEncoder) Encode(
 		return err
 	}
 
-	msgflatbuf.MetricStartAnnotationVector(enc.b, len(m.Annotation))
-	for i := len(m.Annotation) - 1; i >= 0; i-- {
-		enc.b.PrependByte(m.Annotation[i])
-	}
-	annotationOffset := enc.b.EndVector(len(m.Annotation))
+	annotationOffset := enc.b.CreateByteVector(m.Annotation)
 
-	msgflatbuf.MetricStartIdVector(enc.b, len(m.ID))
-	for i := len(m.ID) - 1; i >= 0; i-- {
-		enc.b.PrependByte(m.ID[i])
-	}
-	idOffset := enc.b.EndVector(len(m.ID))
+	idOffset := enc.b.CreateByteVector(m.ID)
 
 	msgflatbuf.MetricStart(enc.b)
 	msgflatbuf.MetricAddType(enc.b, int32(m.Type))
