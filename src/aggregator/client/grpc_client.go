@@ -329,7 +329,7 @@ func (m *flatbufMessage) encodeUntimedGauge(shard uint32, untimed *untimedPayloa
 	msgflatbuf.MessageStart(m.builder)
 	// omitting message ID..
 	msgflatbuf.MessageAddValue(m.builder, valOffset)
-	msgflatbuf.MessageAddValueType(m.builder, msgflatbuf.MessageValueCounterWithMetadatas)
+	msgflatbuf.MessageAddValueType(m.builder, msgflatbuf.MessageValueGaugeWithMetadatas)
 
 	// this is probably wrong
 	msgflatbuf.MessageAddSentAtNanos(m.builder, uint64(untimed.metric.ClientTimeNanos))
@@ -378,7 +378,7 @@ func (m *flatbufMessage) encodeUntimedBatchTimer(shard uint32, untimed *untimedP
 	msgflatbuf.MessageStart(m.builder)
 	// omitting message ID..
 	msgflatbuf.MessageAddValue(m.builder, valOffset)
-	msgflatbuf.MessageAddValueType(m.builder, msgflatbuf.MessageValueCounterWithMetadatas)
+	msgflatbuf.MessageAddValueType(m.builder, msgflatbuf.MessageValueBatchTimerWithMetadatas)
 
 	// this is probably wrong
 	msgflatbuf.MessageAddSentAtNanos(m.builder, uint64(untimed.metric.ClientTimeNanos))
