@@ -152,7 +152,7 @@ func getPipeline(pbuf *msgflatbuf.Pipeline) applied.Pipeline {
 
 	opUnionPlaceholder := new(msgflatbuf.OpUnion)
 	for i := 0; i < pbuf.OperationsLength(); i++ {
-		if !pbuf.Operations(nil, i) {
+		if !pbuf.Operations(opUnionPlaceholder, i) {
 			continue
 		}
 
@@ -186,9 +186,7 @@ func getPipelineMetadata(pmbuf *msgflatbuf.PipelineMetadata) (metadata.PipelineM
 
 	// @tallen - this is broken and causing agg crashes..
 	pipelinePlaceholder := new(msgflatbuf.Pipeline)
-	newval := pmbuf.Pipeline(pipelinePlaceholder)
 	fmt.Printf("@tallen - pmbuf=%+v\n", pmbuf)
-	fmt.Printf("@tallen - hey dude pipelinePlaceholder=%+v, newval=%+v\n", pipelinePlaceholder, newval)
 	pm.Pipeline = getPipeline(pmbuf.Pipeline(pipelinePlaceholder))
 
 	prefixPlaceholder := new(msgflatbuf.GraphitePrefix)
