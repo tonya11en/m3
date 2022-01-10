@@ -82,7 +82,6 @@ func newGrpcShardWriter(numShards uint32, replicated bool) shardWriter {
 }
 
 func (gw *grpcShardWriter) Write(rm *producer.RefCountedMessage) {
-	fmt.Println("@tallen writing...")
 	// Just grab a reference to the channel with the read lock so that we don't starve out any thread
 	// trying to grab the writer lock.
 	gw.msgWriteMtx.RLock()

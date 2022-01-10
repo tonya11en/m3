@@ -89,8 +89,6 @@ func (c *grpcClient) WriteUntimedCounter(
 	}
 	msg := newFlatbufMessage()
 
-	fmt.Printf("@tallen writing untimed counter with metadatas %+v", metadatas)
-
 	shard := c.shardFn(payload.untimed.metric.ID, c.numShards)
 	err := msg.Encode(shard, payload)
 	if err != nil {

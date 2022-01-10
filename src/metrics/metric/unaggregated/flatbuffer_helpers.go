@@ -1,7 +1,6 @@
 package unaggregated
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -184,9 +183,7 @@ func getPipelineMetadata(pmbuf *msgflatbuf.PipelineMetadata) (metadata.PipelineM
 	pm.DropPolicy = policy.DropPolicy(pmbuf.DropPolicy())
 	pm.ResendEnabled = pmbuf.ResendEnabled()
 
-	// @tallen - this is broken and causing agg crashes..
 	pipelinePlaceholder := new(msgflatbuf.Pipeline)
-	fmt.Printf("@tallen - pmbuf=%+v\n", pmbuf)
 	pm.Pipeline = getPipeline(pmbuf.Pipeline(pipelinePlaceholder))
 
 	prefixPlaceholder := new(msgflatbuf.GraphitePrefix)
