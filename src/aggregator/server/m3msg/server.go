@@ -50,8 +50,9 @@ func NewServer(
 			logger:     opts.InstrumentOptions().Logger(),
 		}
 	}
-	handler := consumer.NewMessageHandler(consumer.NewMessageProcessorFactory(newMessageProcessor), opts.ConsumerOptions())
-	return xserver.NewServer(address, handler, opts.ServerOptions()), nil
+
+	fmt.Println("@tallen making grpc consumer server in place of m3msg server @ ", address)
+	return consumer.NewGRPCConsumerServer(address, newMessageProcessor())
 }
 
 type messageProcessor struct {
@@ -62,11 +63,12 @@ type messageProcessor struct {
 }
 
 func (m *messageProcessor) Process(msg consumer.Message) {
+	fmt.Printf("@tallen processing in agg/m3msg/srv: %+v\n", msg)
 	if err := m.handleMessage(&m.pb, &m.union, msg); err != nil {
 		m.logger.Error("could not process message",
 			zap.Error(err),
-			zap.Uint64("shard", msg.ShardID()),
-			zap.String("proto", m.pb.String()))
+			zap.Uint64("shard", msg.ShardID()))
+		fmt.Printf("@tallen uh-oh: %+v\n", msg)
 	}
 }
 
@@ -123,6 +125,8 @@ func (m *messageProcessor) handleMessage(
 			union.TimedMetricWithMetadata.Metric,
 			union.TimedMetricWithMetadata.TimedMetadata)
 	case metricpb.MetricWithMetadatas_TIMED_METRIC_WITH_METADATAS:
+		// @tallen - fuck
+		return nil
 		err := union.TimedMetricWithMetadatas.FromProto(pb.TimedMetricWithMetadatas)
 		if err != nil {
 			return err

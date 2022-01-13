@@ -96,6 +96,7 @@ func NewWriter(opts Options) producer.Writer {
 }
 
 func (w *writer) Write(rm *producer.RefCountedMessage) error {
+	fmt.Println("@tallen writer Write()")
 	w.RLock()
 	if w.isClosed {
 		rm.Drop()

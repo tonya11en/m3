@@ -227,6 +227,7 @@ func (c *M3MsgClient) WriteForwarded(
 
 //nolint:gocritic
 func (c *M3MsgClient) write(metricID id.RawID, payload payloadUnion) error {
+	fmt.Println("@tallen msgmsg write metric ", metricID.String())
 	shard := c.shardFn(metricID, c.m3msg.numShards)
 
 	msg := c.m3msg.messagePool.Get()

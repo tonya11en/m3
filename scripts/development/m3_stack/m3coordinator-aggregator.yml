@@ -35,6 +35,23 @@ clusters:
                 - m3db_seed:2379
 
 downsample:
+  rules:
+    rollupRules:
+      - name: "@tallen rollup rule name"
+        filter: "foo:bar"
+        transforms:
+        - transform:
+            type: "Increase"
+        - rollup:
+            metricName: "tallen_test_rollup"
+            groupBy: ["le", "git_sha", "route", "status_code", "region"]
+            aggregations: ["Sum"]
+        - transform:
+            type: "Add"
+        storagePolicies:
+        - resolution: 30s
+          retention: 720h
+
   remoteAggregator:
     client:
       type: m3msg
@@ -51,7 +68,7 @@ downsample:
               namespaces:
                 placement: /placement
             connection:
-              numConnections: 32
+              numConnections: 1
             messagePool:
               size: 16384
               watermark:

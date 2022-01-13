@@ -43,26 +43,24 @@ type Configuration struct {
 
 // NewServer creates a new server.
 func (c Configuration) NewServer(
+	address string,
 	writeFn WriteFn,
 	rwOpts xio.Options,
 	iOpts instrument.Options,
 ) (server.Server, error) {
-	scope := iOpts.MetricsScope().Tagged(map[string]string{"server": "m3msg"})
-	cOpts := c.Consumer.NewOptions(
-		iOpts.SetMetricsScope(scope.Tagged(map[string]string{
-			"component": "consumer",
-		})),
-	)
 
-	cOpts = cOpts.SetDecoderOptions(cOpts.DecoderOptions().SetRWOptions(rwOpts))
-	h, err := c.Handler.newHandler(writeFn, cOpts, iOpts.SetMetricsScope(scope))
-	if err != nil {
-		return nil, err
-	}
-	return c.Server.NewServer(
-		h,
-		iOpts.SetMetricsScope(scope),
-	), nil
+	// @tallen
+	p := newProtobufProcessor(Options{
+		WriteFn: writeFn,
+		InstrumentOptions: iOpts.SetMetricsScope(
+			iOpts.MetricsScope().Tagged(map[string]string{
+				"handler": "protobuf",
+			}),
+		),
+		ProtobufDecoderPoolOptions: c.Handler.ProtobufDecoderPool.NewObjectPoolOptions(iOpts),
+		BlockholePolicies:          c.Handler.BlackholePolicies,
+	})
+	return consumer.NewGRPCConsumerServer(address, p)
 }
 
 type handlerConfiguration struct {

@@ -22,6 +22,7 @@ package ingest
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/m3db/m3/src/cmd/services/m3coordinator/downsample"
@@ -182,6 +183,7 @@ func (d *downsamplerAndWriter) Write(
 	overrides WriteOptions,
 	source ts.SourceType,
 ) error {
+	fmt.Println("@tallen downsample write()")
 	var (
 		multiErr         = xerrors.NewMultiError()
 		dropUnaggregated bool
@@ -404,6 +406,7 @@ func (d *downsamplerAndWriter) WriteBatch(
 	iter DownsampleAndWriteIter,
 	overrides WriteOptions,
 ) BatchError {
+	fmt.Println("@tallen downsample write batch")
 	var (
 		wg       sync.WaitGroup
 		multiErr xerrors.MultiError
@@ -548,6 +551,7 @@ func (d *downsamplerAndWriter) writeAggregatedBatch(
 		}
 
 		for _, dp := range value.Datapoints {
+			fmt.Println("@tallen coord ingest append: ", value.Attributes.M3Type)
 			switch value.Attributes.M3Type {
 			case ts.M3MetricTypeGauge:
 				if result.ShouldDropTimestamp {

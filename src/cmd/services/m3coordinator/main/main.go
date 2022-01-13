@@ -22,6 +22,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 
 	"github.com/m3db/m3/src/cmd/services/m3query/config"
@@ -41,6 +42,7 @@ func main() {
 		log.Fatalf("error loading config: %v", err)
 	}
 
+	fmt.Println("@tallen in coord main..")
 	server.Run(server.RunOptions{
 		Config: cfg,
 	})

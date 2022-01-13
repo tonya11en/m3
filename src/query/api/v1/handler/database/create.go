@@ -257,6 +257,7 @@ func (h *createHandler) maybeInitPlacement(
 	placementRequest *admin.PlacementInitRequest,
 	r *http.Request,
 ) (clusterplacement.Placement, error) {
+	fmt.Printf("@tallen placement: %+v\n", placementRequest.Instances)
 	if currPlacement == nil {
 		// If we're here then there is no existing placement, so just create it. This is safe because in
 		// the case where a placement did not already exist, the parse function above validated that we

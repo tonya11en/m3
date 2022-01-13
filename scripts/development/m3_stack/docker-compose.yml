@@ -1,5 +1,21 @@
 version: "3.5"
 services:
+  m3envoy:
+    networks:
+      - backend
+    image: envoyproxy/envoy:v1.20-latest
+    ports:
+      - "0.0.0.0:8081:8081"
+      - "0.0.0.0:8888:8888"
+      - "0.0.0.0:8889:8889"
+      - "0.0.0.0:8999:8999"
+    expose:
+      - "8081:8081"
+      - "8888:8888"
+      - "8889:8889"
+      - "8999:8999"
+    volumes:
+      - "./envoy.yaml:/etc/envoy/envoy.yaml"
   m3db_seed:
     networks:
       - backend
@@ -7,6 +23,8 @@ services:
       context: ../../../bin
       dockerfile: ./docker/m3dbnode/development.Dockerfile
     image: m3dbnode:dev
+    cpus: 0.05
+    mem_limit: 4G
     volumes:
       - "./m3dbnode.yml:/etc/m3dbnode/m3dbnode.yml"
       - "./schema.proto:/etc/m3dbnode/schema.proto"
@@ -29,6 +47,8 @@ services:
       context: ../../../bin
       dockerfile: ./docker/m3dbnode/development.Dockerfile
     image: m3dbnode:dev
+    cpus: 0.05
+    mem_limit: 4G
     volumes:
       - "./m3dbnode.yml:/etc/m3dbnode/m3dbnode.yml"
     environment:
@@ -40,6 +60,8 @@ services:
       context: ../../../bin
       dockerfile: ./docker/m3dbnode/development.Dockerfile
     image: m3dbnode:dev
+    cpus: 0.05
+    mem_limit: 4G
     volumes:
       - "./m3dbnode.yml:/etc/m3dbnode/m3dbnode.yml"
     environment:
@@ -51,14 +73,20 @@ services:
       - "0.0.0.0:6001:6001"
     networks:
       - backend
+    links:
+      - "m3envoy:m3coordinator01-envoy"
+      - "m3envoy:m3aggregator01-envoy"
+      - "m3envoy:m3aggregator02-envoy"
     build:
       context: ../../../bin
       dockerfile: ./docker/m3aggregator/development.Dockerfile
     image: m3aggregator:dev
+    cpus: 0.05
+    mem_limit: 4G
     volumes:
       - "./m3aggregator.yml:/etc/m3aggregator/m3aggregator.yml"
     environment:
-      - M3AGGREGATOR_HOST_ID=m3aggregator01
+      - M3AGGREGATOR_HOST_ID="m3aggregator01"
   m3aggregator02:
     expose:
       - "6002"
@@ -66,14 +94,20 @@ services:
       - "0.0.0.0:6002:6001"
     networks:
       - backend
+    links:
+      - "m3envoy:m3coordinator01-envoy"
+      - "m3envoy:m3aggregator01-envoy"
+      - "m3envoy:m3aggregator02-envoy"
     build:
       context: ../../../bin
       dockerfile: ./docker/m3aggregator/development.Dockerfile
     image: m3aggregator:dev
+    cpus: 0.05
+    mem_limit: 4G
     volumes:
       - "./m3aggregator.yml:/etc/m3aggregator/m3aggregator.yml"
     environment:
-      - M3AGGREGATOR_HOST_ID=m3aggregator02
+      - M3AGGREGATOR_HOST_ID="m3aggregator02"
   m3coordinator01:
     expose:
       - "7201"
@@ -87,10 +121,16 @@ services:
       - "0.0.0.0:7507:7507"
     networks:
       - backend
+    links:
+      - "m3envoy:m3coordinator01-envoy"
+      - "m3envoy:m3aggregator01-envoy"
+      - "m3envoy:m3aggregator02-envoy"
     build:
       context: ../../../bin
       dockerfile: ./docker/m3coordinator/development.Dockerfile
     image: m3coordinator:dev
+    cpus: 0.05
+    mem_limit: 8G
     volumes:
       # Use a git ignored path to easily change pre-set configs.
       # Note: Use ".tmp" suffix is git ignored.

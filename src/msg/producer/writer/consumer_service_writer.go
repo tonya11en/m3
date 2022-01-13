@@ -161,11 +161,13 @@ func initShardWriters(
 	var (
 		sws = make([]shardWriter, numberOfShards)
 
+		/* @tallen
 		m = newMessageWriterMetrics(
 			opts.InstrumentOptions().MetricsScope(),
 			opts.InstrumentOptions().TimerOptions(),
 			opts.WithoutConsumerScope(),
 		)
+		*/
 
 		mPool messagePool
 	)
@@ -180,10 +182,10 @@ func initShardWriters(
 		// communication of aggregated metrics to the coord, but replicated is used for unaggregated
 		// metrics to the aggregator.
 		case topic.Shared:
-			sws[i] = newSharedShardWriter(uint32(i), router, mPool, opts, m)
-			//sws[i] = newGrpcShardWriter(numberOfShards, false)
+			//sws[i] = newSharedShardWriter(uint32(i), router, mPool, opts, m)
+			sws[i] = newGrpcShardWriter(numberOfShards, false)
 		case topic.Replicated:
-			//			sws[i] = newReplicatedShardWriter(uint32(i), numberOfShards, router, mPool, opts, m)
+			//sws[i] = newReplicatedShardWriter(uint32(i), numberOfShards, router, mPool, opts, m)
 			sws[i] = newGrpcShardWriter(numberOfShards, true)
 		}
 	}
@@ -191,6 +193,7 @@ func initShardWriters(
 }
 
 func (w *consumerServiceWriterImpl) Write(rm *producer.RefCountedMessage) {
+	fmt.Println("@tallen consumer service writer Write()")
 	if rm.Accept(w.dataFilter) {
 		w.shardWriters[rm.Shard()].Write(rm)
 		w.m.filterAccepted.Inc(1)
@@ -253,25 +256,14 @@ func (w *consumerServiceWriterImpl) process(update interface{}) error {
 	}
 	// NB(cw): Lock can be removed as w.consumerWriters is only accessed in this thread.
 	w.Lock()
-	newConsumerWriters, tobeDeleted := w.diffPlacementWithLock(p)
 	for i, sw := range w.shardWriters {
 		if isSharded {
-			sw.UpdateInstances(p.InstancesForShard(uint32(i)), newConsumerWriters)
+			sw.UpdateInstances(p.InstancesForShard(uint32(i)), nil)
 			continue
 		}
-		sw.UpdateInstances(p.Instances(), newConsumerWriters)
+		sw.UpdateInstances(p.Instances(), nil)
 	}
-	oldConsumerWriters := w.consumerWriters
-	w.consumerWriters = newConsumerWriters
 	w.Unlock()
-	go func() {
-		for _, addr := range tobeDeleted {
-			cw, ok := oldConsumerWriters[addr]
-			if ok {
-				cw.Close()
-			}
-		}
-	}()
 	return nil
 }
 
@@ -288,6 +280,7 @@ func (w *consumerServiceWriterImpl) diffPlacementWithLock(newPlacement placement
 			newConsumerWriters[id] = cw
 			continue
 		}
+		// @tallen
 		cw = newConsumerWriter(instance.Endpoint(), w.router, w.opts, w.cm)
 		cw.Init()
 		newConsumerWriters[id] = cw

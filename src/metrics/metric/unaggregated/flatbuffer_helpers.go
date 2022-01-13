@@ -82,7 +82,7 @@ func (cm *CounterWithMetadatas) FromFlatbuffer(buf *msgflatbuf.CounterWithMetada
 	for i := 0; i < buf.MetadatasLength(); i++ {
 		smbuf := new(msgflatbuf.StagedMetadata)
 		if buf.Metadatas(smbuf, i) {
-			cm.StagedMetadatas[i], err = getStagedMetadata(smbuf)
+			cm.StagedMetadatas[i], err = GetStagedMetadata(smbuf)
 			if err != nil {
 				return err
 			}
@@ -110,7 +110,7 @@ func (bt *BatchTimerWithMetadatas) FromFlatbuffer(buf *msgflatbuf.BatchTimerWith
 	for i := 0; i < buf.MetadatasLength(); i++ {
 		smbuf := new(msgflatbuf.StagedMetadata)
 		if buf.Metadatas(smbuf, i) {
-			bt.StagedMetadatas[i], err = getStagedMetadata(smbuf)
+			bt.StagedMetadatas[i], err = GetStagedMetadata(smbuf)
 			if err != nil {
 				return err
 			}
@@ -134,7 +134,7 @@ func (g *GaugeWithMetadatas) FromFlatbuffer(buf *msgflatbuf.GaugeWithMetadatas) 
 	for i := 0; i < buf.MetadatasLength(); i++ {
 		smbuf := new(msgflatbuf.StagedMetadata)
 		if buf.Metadatas(smbuf, i) {
-			g.StagedMetadatas[i], err = getStagedMetadata(smbuf)
+			g.StagedMetadatas[i], err = GetStagedMetadata(smbuf)
 			if err != nil {
 				return err
 			}
@@ -226,7 +226,7 @@ func getPipelineMetadata(pmbuf *msgflatbuf.PipelineMetadata) (metadata.PipelineM
 	return pm, nil
 }
 
-func getStagedMetadata(mbuf *msgflatbuf.StagedMetadata) (metadata.StagedMetadata, error) {
+func GetStagedMetadata(mbuf *msgflatbuf.StagedMetadata) (metadata.StagedMetadata, error) {
 	toReturn := metadata.StagedMetadata{}
 
 	// TODO: these allocations are awful. fix it with pooling or something

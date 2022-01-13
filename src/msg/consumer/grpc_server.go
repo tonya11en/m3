@@ -1,8 +1,11 @@
 package consumer
 
+/*
+
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"time"
 
@@ -30,6 +33,9 @@ type GrpcConsumerServer struct {
 	aggregator       aggregator.Aggregator
 	activeRequestSem chan struct{}
 	processFn        func(*msgflatbuf.Message) chan *AckInfo
+
+	// @tallen rip this out
+	srvID uint64
 }
 
 type AckInfo struct {
@@ -53,6 +59,7 @@ func NewGRPCConsumerServer(address string, processMsgFunc func(*msgflatbuf.Messa
 		grpcServer:       grpc.NewServer(opts...),
 		processFn:        processMsgFunc,
 		activeRequestSem: make(chan struct{}, maxActiveRequests),
+		srvID:            rand.Uint64(),
 	}
 
 	msgflatbuf.RegisterMessageWriterServer(s.grpcServer, &s)
@@ -62,11 +69,11 @@ func NewGRPCConsumerServer(address string, processMsgFunc func(*msgflatbuf.Messa
 }
 
 func (s *GrpcConsumerServer) ListenAndServe() error {
-	fmt.Println("@tallen listen and serving")
+	fmt.Println("@tallen listen and serving ", s.srvID)
 	var err error
 	s.listener, err = net.Listen("tcp", s.address)
 	if err != nil {
-		fmt.Println("@tallen error trying to listen", err.Error())
+		fmt.Println("@tallen error trying to listen: ", err.Error())
 		return err
 	}
 
@@ -74,7 +81,7 @@ func (s *GrpcConsumerServer) ListenAndServe() error {
 }
 
 func (s *GrpcConsumerServer) Serve(l net.Listener) error {
-	fmt.Println("@tallen serving..")
+	fmt.Println("@tallen serving.. ", s.srvID)
 
 	return s.grpcServer.Serve(l)
 }
@@ -88,16 +95,21 @@ func (s *GrpcConsumerServer) Close() {
 
 func (s *GrpcConsumerServer) WriteMessage(stream msgflatbuf.MessageWriter_WriteMessageServer) error {
 	for {
+		fmt.Println("@tallen WriteMessage loop in base grpc server... ", s.srvID)
 		msg, err := stream.Recv()
 		if err == io.EOF {
+			fmt.Println("@tallen WriteMessage base: EOF received ", s.srvID)
 			return nil
 		}
 		if err != nil {
+			fmt.Println("@tallen WriteMessage base: ", s.srvID, " : ", err.Error())
 			return err
 		}
 
 		// @tallen so it doesn't panic, we'll just drop writes that aren't counters.
+		fmt.Println("@tallen WriteMessage received message of type ", msg.ValueType().String())
 		if msg.ValueType() != msgflatbuf.MessageValueCounterWithMetadatas {
+			fmt.Println("@tallen WriteMessage DROPPING message of type ", msg.ValueType().String())
 			continue
 		}
 
@@ -105,7 +117,9 @@ func (s *GrpcConsumerServer) WriteMessage(stream msgflatbuf.MessageWriter_WriteM
 		go func() {
 			defer func() { <-s.activeRequestSem }()
 
+			fmt.Println("@tallen WriteMessage calling process Fn... ", s.srvID)
 			ainfo := <-s.processFn(msg)
+			fmt.Printf("@tallen WriteMessage done calling process Fn... ", s.srvID, " : ainfo=%+v\n", ainfo)
 
 			b := msgflatbuf.GetBuilder()
 			defer func() { msgflatbuf.ReturnBuilder(b) }()
@@ -124,3 +138,4 @@ func (s *GrpcConsumerServer) WriteMessage(stream msgflatbuf.MessageWriter_WriteM
 		}()
 	}
 }
+*/

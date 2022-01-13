@@ -29,6 +29,8 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/m3db/m3/src/msg/generated/msgflatbuf"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/keepalive"
 )
 
 type grpcStreamWriter struct {
@@ -65,10 +67,19 @@ func newGRPCStreamWriter(ctx context.Context, addr string, msgChan <-chan *flatb
 
 // Init initializes the consumer writer.
 func (w *grpcStreamWriter) Init() {
-	fmt.Println("@tallen making grpc client. dialing")
+	w.initClient()
+	go w.connectLoop()
+}
+
+func (w *grpcStreamWriter) initClient() {
+	fmt.Println("@tallen making grpc client. dialing", " - ", w.address)
 	dopts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithCodec(flatbuffers.FlatbuffersCodec{}),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                10 * time.Second,
+			PermitWithoutStream: true,
+		}),
 	}
 
 	conn, err := grpc.Dial(w.address, dopts...)
@@ -78,12 +89,10 @@ func (w *grpcStreamWriter) Init() {
 	}
 	w.conn = conn
 
-	fmt.Println("@tallen done dialing. making new grpc client")
+	fmt.Println("@tallen done dialing. making new grpc client", " - ", w.address)
 
 	mrc := msgflatbuf.NewMessageWriterClient(conn)
 	w.client = mrc
-
-	go w.connectLoop()
 }
 
 func (w *grpcStreamWriter) connectLoop() {
@@ -97,10 +106,12 @@ func (w *grpcStreamWriter) connectLoop() {
 
 		err := w.startStream(w.ctx)
 		if err != nil {
-			fmt.Printf("error encountered during stream: %s\n", err.Error())
-			// TODO @tallen: don't sleep if we can help it.
-			time.Sleep(500 * time.Millisecond)
-			fmt.Printf("retrying stream establishment")
+			fmt.Printf("@tallen error encountered during stream: %s\n", err.Error())
+			fmt.Println("@tallen retrying stream establishment...", " - ", w.address)
+			for currentState := w.conn.GetState(); currentState != connectivity.Ready; currentState = w.conn.GetState() {
+				fmt.Println("@tallen waiting for grpc conn state change from ", currentState.String(), " - ", w.address)
+				w.conn.WaitForStateChange(w.ctx, currentState)
+			}
 		}
 	}
 }
@@ -109,6 +120,10 @@ func (w *grpcStreamWriter) receiveAcks(
 	ctx context.Context,
 	stream msgflatbuf.MessageWriter_WriteMessageClient,
 	errChan chan error) {
+
+	defer stream.CloseSend()
+
+	defer fmt.Println("@tallen exiting receiveAcks")
 
 	for {
 		select {
@@ -125,7 +140,7 @@ func (w *grpcStreamWriter) receiveAcks(
 			return
 		}
 		if err != nil {
-			fmt.Printf("error received from stream: %s", err.Error())
+			fmt.Printf("@tallen error received from stream: %s\n", err.Error())
 			errChan <- err
 			return
 		}
@@ -145,11 +160,11 @@ func (w *grpcStreamWriter) startStream(ctx context.Context) error {
 	defer cancel()
 
 	fmt.Printf("@tallen establishing message writer stream for %s\n", w.address)
-	defer fmt.Printf("stream terminated for %s\n", w.address)
+	defer fmt.Printf("@tallen stream terminated for %s\n", w.address)
 
 	stream, err := w.client.WriteMessage(ctx)
 	if err != nil {
-		fmt.Printf("error creating stream: %s\n", err.Error())
+		fmt.Printf("@tallen error creating stream: %s\n", err.Error())
 		return err
 	}
 	defer stream.CloseSend()
@@ -158,21 +173,24 @@ func (w *grpcStreamWriter) startStream(ctx context.Context) error {
 	go w.receiveAcks(ctx, stream, recvErrChan)
 
 	for {
+		fmt.Println("@tallen starting stream writer loop")
 		select {
 		case <-stream.Context().Done():
-			fmt.Printf("stream context cancelled")
+			fmt.Println("@tallen stream context cancelled")
 			return nil
 
 		case err := <-recvErrChan:
 			return err
 
 		case b := <-w.msgChan:
+			fmt.Println("@tallen received msg on channel to send")
 			b.FinishedBytes() // @tallen
 			err := stream.Send(b)
 			if err != nil {
-				fmt.Printf("stream send failed")
+				fmt.Println("@tallen stream send failed")
 				return err
 			}
+			msgflatbuf.ReturnBuilder(b)
 		}
 	}
 }

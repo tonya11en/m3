@@ -725,7 +725,7 @@ func Run(runOpts RunOptions) RunResult {
 	}()
 
 	if cfg.Ingest != nil {
-		logger.Info("starting m3msg server",
+		logger.Info("@tallen starting GRPC (NOT m3msg) server",
 			zap.String("address", cfg.Ingest.M3Msg.Server.ListenAddress))
 		ingester, err := cfg.Ingest.Ingester.NewIngester(backendStorage,
 			tagOptions, instrumentOptions)
@@ -734,23 +734,16 @@ func Run(runOpts RunOptions) RunResult {
 		}
 
 		server, err := cfg.Ingest.M3Msg.NewServer(
+			cfg.Ingest.M3Msg.Server.ListenAddress,
 			ingester.Ingest, rwOpts,
 			instrumentOptions.SetMetricsScope(scope.SubScope("ingest-m3msg")))
 		if err != nil {
 			logger.Fatal("unable to create m3msg server", zap.Error(err))
 		}
 
-		listener, err := listenerOpts.Listen("tcp", cfg.Ingest.M3Msg.Server.ListenAddress)
+		err = server.ListenAndServe()
 		if err != nil {
-			logger.Fatal("unable to open m3msg server", zap.Error(err))
-		}
-
-		if runOpts.M3MsgListenerCh != nil {
-			runOpts.M3MsgListenerCh <- listener
-		}
-
-		if err := server.Serve(listener); err != nil {
-			logger.Fatal("unable to listen on ingest server", zap.Error(err))
+			logger.Fatal("@tallen failed server listen/serve", zap.Error(err))
 		}
 
 		logger.Info("started m3msg server", zap.Stringer("addr", listener.Addr()))

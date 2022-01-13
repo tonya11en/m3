@@ -22,6 +22,7 @@ package m3msg
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/m3db/m3/src/metrics/encoding/protobuf"
@@ -51,7 +52,7 @@ type handlerMetrics struct {
 func newHandlerMetrics(scope tally.Scope) handlerMetrics {
 	messageScope := scope.SubScope("metric")
 	return handlerMetrics{
-		metricAccepted:   messageScope.Counter("accepted"),
+		metricAccepted: messageScope.Counter("accepted"),
 		droppedMetricDecodeError: messageScope.Tagged(map[string]string{
 			"reason": "decode-error",
 		}).Counter("dropped"),
@@ -99,6 +100,7 @@ func newProtobufProcessor(opts Options) consumer.MessageProcessor {
 }
 
 func (h *pbHandler) Process(msg consumer.Message) {
+	fmt.Println("@tallen pbhandler process m3msg...")
 	dec := h.pool.Get()
 	if err := dec.Decode(msg.Bytes()); err != nil {
 		h.logger.Error("could not decode metric from message", zap.Error(err))

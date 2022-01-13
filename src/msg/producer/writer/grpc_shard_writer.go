@@ -24,9 +24,11 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/m3db/m3/src/cluster/placement"
+	"github.com/m3db/m3/src/msg/generated/msgflatbuf"
 	"github.com/m3db/m3/src/msg/producer"
 )
 
@@ -82,18 +84,27 @@ func newGrpcShardWriter(numShards uint32, replicated bool) shardWriter {
 }
 
 func (gw *grpcShardWriter) Write(rm *producer.RefCountedMessage) {
+	fmt.Println("@tallen grpc shard writer write shard: ", rm.Message.Shard())
 	// Just grab a reference to the channel with the read lock so that we don't starve out any thread
 	// trying to grab the writer lock.
 	gw.msgWriteMtx.RLock()
 	broker := gw.shardMsgBrokers[rm.Shard()]
 	gw.msgWriteMtx.RUnlock()
 
-	rm.Builder().FinishedBytes() // @tallen
+	builder := msgflatbuf.GetBuilder()
+	offset := builder.CreateByteVector(rm.Bytes())
+
+	msgflatbuf.MessageStart(builder)
+	msgflatbuf.MessageAddShard(builder, uint64(rm.Message.Shard()))
+	msgflatbuf.MessageAddSentAtNanos(builder, uint64(time.Now().Nanosecond()))
+	msgflatbuf.MessageAddMsgValue(builder, offset)
+	finOffset := msgflatbuf.MessageEnd(builder)
+	builder.Finish(finOffset)
 
 	if gw.replicatedTopic {
-		broker.Publish(rm.Builder())
+		broker.Publish(builder)
 	} else {
-		broker.Select(rm.Builder())
+		broker.Select(builder)
 	}
 }
 

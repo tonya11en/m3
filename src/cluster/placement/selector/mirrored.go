@@ -419,7 +419,7 @@ func groupHostsWithIsolationGroupCheck(hosts []host, rf int) (groups [][]host, u
 func groupInstancesByHostPort(hostGroups [][]host, skipPortMatching bool) ([][]placement.Instance, error) {
 	var instanceGroups = make([][]placement.Instance, 0, len(hostGroups))
 	for _, hostGroup := range hostGroups {
-		if !skipPortMatching {
+		if false { //!skipPortMatching {
 			for port, instance := range hostGroup[0].portToInstance {
 				instanceGroup := make([]placement.Instance, 0, len(hostGroup))
 				instanceGroup = append(instanceGroup, instance)

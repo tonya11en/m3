@@ -20,6 +20,8 @@
 
 package producer
 
+import "fmt"
+
 type producer struct {
 	Buffer
 	Writer
@@ -39,10 +41,12 @@ func (p *producer) Init() error {
 }
 
 func (p *producer) Produce(m Message) error {
+	fmt.Println("@tallen produce")
 	rm, err := p.Buffer.Add(m)
 	if err != nil {
 		return err
 	}
+	fmt.Println("@tallen produce - write")
 	return p.Writer.Write(rm)
 }
 

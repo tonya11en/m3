@@ -22,6 +22,7 @@ package writer
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 
 	flatbuffers "github.com/google/flatbuffers/go"
@@ -103,6 +104,7 @@ func NewProtobufWriter(
 }
 
 func (w *protobufWriter) Write(mp aggregated.ChunkedMetricWithStoragePolicy) error {
+	fmt.Println("@tallen protobuf writer Write()")
 	if w.closed {
 		w.metrics.writerClosed.Inc(1)
 		return errWriterClosed

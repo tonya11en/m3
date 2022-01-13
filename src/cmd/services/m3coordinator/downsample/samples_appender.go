@@ -21,6 +21,8 @@
 package downsample
 
 import (
+	"fmt"
+
 	"github.com/uber-go/tally"
 
 	"github.com/m3db/m3/src/aggregator/aggregator"
@@ -207,6 +209,7 @@ func (a *multiSamplesAppender) addSamplesAppender(v samplesAppender) {
 }
 
 func (a *multiSamplesAppender) AppendUntimedCounterSample(t xtime.UnixNano, value int64, annotation []byte) error {
+	fmt.Println("@tallen appender AppendUntimedcounter")
 	var multiErr xerrors.MultiError
 	for _, appender := range a.appenders {
 		multiErr = multiErr.Add(appender.AppendUntimedCounterSample(t, value, annotation))
@@ -215,6 +218,7 @@ func (a *multiSamplesAppender) AppendUntimedCounterSample(t xtime.UnixNano, valu
 }
 
 func (a *multiSamplesAppender) AppendUntimedGaugeSample(t xtime.UnixNano, value float64, annotation []byte) error {
+	fmt.Println("@tallen appender AppendUntimed gauge")
 	var multiErr xerrors.MultiError
 	for _, appender := range a.appenders {
 		multiErr = multiErr.Add(appender.AppendUntimedGaugeSample(t, value, annotation))
@@ -223,6 +227,7 @@ func (a *multiSamplesAppender) AppendUntimedGaugeSample(t xtime.UnixNano, value 
 }
 
 func (a *multiSamplesAppender) AppendUntimedTimerSample(t xtime.UnixNano, value float64, annotation []byte) error {
+	fmt.Println("@tallen appender AppendUntimed timer")
 	var multiErr xerrors.MultiError
 	for _, appender := range a.appenders {
 		multiErr = multiErr.Add(appender.AppendUntimedTimerSample(t, value, annotation))
@@ -233,6 +238,7 @@ func (a *multiSamplesAppender) AppendUntimedTimerSample(t xtime.UnixNano, value 
 func (a *multiSamplesAppender) AppendCounterSample(
 	t xtime.UnixNano, value int64, annotation []byte,
 ) error {
+	fmt.Println("@tallen appender Append counter")
 	var multiErr xerrors.MultiError
 	for _, appender := range a.appenders {
 		multiErr = multiErr.Add(appender.AppendCounterSample(t, value, annotation))
@@ -243,6 +249,7 @@ func (a *multiSamplesAppender) AppendCounterSample(
 func (a *multiSamplesAppender) AppendGaugeSample(
 	t xtime.UnixNano, value float64, annotation []byte,
 ) error {
+	fmt.Println("@tallen appender Append gauge")
 	var multiErr xerrors.MultiError
 	for _, appender := range a.appenders {
 		multiErr = multiErr.Add(appender.AppendGaugeSample(t, value, annotation))
@@ -253,6 +260,7 @@ func (a *multiSamplesAppender) AppendGaugeSample(
 func (a *multiSamplesAppender) AppendTimerSample(
 	t xtime.UnixNano, value float64, annotation []byte,
 ) error {
+	fmt.Println("@tallen appender Append timer")
 	var multiErr xerrors.MultiError
 	for _, appender := range a.appenders {
 		multiErr = multiErr.Add(appender.AppendTimerSample(t, value, annotation))

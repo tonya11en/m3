@@ -21,6 +21,7 @@
 package consumer
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -158,6 +159,7 @@ func (c *consumer) Init() {
 	}()
 }
 func (c *consumer) process(m Message) {
+	fmt.Println("@tallen vanilla consumer proccess msg")
 	c.messageProcessor.Process(m)
 }
 

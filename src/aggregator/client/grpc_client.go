@@ -184,6 +184,7 @@ func (c *grpcClient) WriteForwarded(
 }
 
 func (c *grpcClient) write(msg *flatbufMessage) error {
+	fmt.Println("@@@@@@@tallen write ")
 	return c.producer.Produce(msg)
 }
 

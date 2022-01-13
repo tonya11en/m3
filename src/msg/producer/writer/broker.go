@@ -22,6 +22,7 @@ package writer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -67,6 +68,7 @@ func (b *resourceBroker) Select(msg *flatbuffers.Builder) {
 }
 
 func (b *resourceBroker) Publish(msg *flatbuffers.Builder) {
+	fmt.Println("@tallen resource broker publishing")
 	b.rwlock.RLock()
 	defer b.rwlock.RUnlock()
 	for _, ch := range b.subs {

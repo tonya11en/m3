@@ -1,4 +1,6 @@
-package consumer
+package server
+
+/*
 
 import (
 	"fmt"
@@ -10,6 +12,7 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"google.golang.org/grpc"
 
+	"github.com/m3db/m3/src/msg/consumer"
 	"github.com/m3db/m3/src/msg/generated/msgflatbuf"
 )
 
@@ -27,7 +30,7 @@ type GrpcConsumerServer struct {
 	address          string
 	grpcServer       *grpc.Server
 	listener         net.Listener
-	processor        MessageProcessor
+	processor        consumer.MessageProcessor
 	activeRequestSem chan struct{}
 
 	// @tallen rip this out
@@ -42,7 +45,7 @@ type AckInfo struct {
 
 // TODO: add options
 // Returns a new gRPC aggregator server.
-func NewGRPCConsumerServer(address string, processor MessageProcessor) (*GrpcConsumerServer, error) {
+func NewGRPCConsumerServer(address string, processor consumer.MessageProcessor) (*GrpcConsumerServer, error) {
 	// todo
 	fmt.Println("@tallen making new server.. registering")
 
@@ -102,10 +105,6 @@ func (s *GrpcConsumerServer) WriteMessage(stream msgflatbuf.MessageWriter_WriteM
 			return err
 		}
 
-		if msg.MsgValueLength() == 0 {
-			fmt.Println("@tallen msg length is 0 - ignoring")
-		}
-
 		s.activeRequestSem <- struct{}{}
 		go func() {
 			defer func() { <-s.activeRequestSem }()
@@ -127,7 +126,6 @@ func (s *GrpcConsumerServer) WriteMessage(stream msgflatbuf.MessageWriter_WriteM
 				}
 			}
 
-			fmt.Printf("@tallen debug msg stuff len=%d, id=%d\n", msg.MsgValueLength(), msg.Id())
 			msgBytes := make([]byte, msg.MsgValueLength())
 			for i := 0; i < msg.MsgValueLength(); i++ {
 				msgBytes[i] = byte(msg.MsgValue(i))
@@ -176,3 +174,4 @@ func (m *GRPCConsumerMessage) ShardID() uint64 {
 func (m *GRPCConsumerMessage) SentAtNanos() uint64 {
 	return m.sentAtNanos
 }
+*/
