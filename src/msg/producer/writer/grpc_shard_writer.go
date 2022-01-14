@@ -63,7 +63,6 @@ type grpcShardWriter struct {
 }
 
 func newGrpcShardWriter(numShards uint32, replicated bool) shardWriter {
-	fmt.Println("@tallen creating shard writer")
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create the write channels with buffers for higher throughput.
@@ -84,15 +83,18 @@ func newGrpcShardWriter(numShards uint32, replicated bool) shardWriter {
 }
 
 func (gw *grpcShardWriter) Write(rm *producer.RefCountedMessage) {
-	fmt.Println("@tallen grpc shard writer write shard: ", rm.Message.Shard())
 	// Just grab a reference to the channel with the read lock so that we don't starve out any thread
 	// trying to grab the writer lock.
 	gw.msgWriteMtx.RLock()
 	broker := gw.shardMsgBrokers[rm.Shard()]
 	gw.msgWriteMtx.RUnlock()
 
+	// @tallen this is for debugging
+	bcopy := make([]byte, 0, len(rm.Bytes()))
+	bcopy = append(bcopy, rm.Bytes()...)
+	fmt.Printf("@tallen write debug %+v\n", bcopy)
 	builder := msgflatbuf.GetBuilder()
-	offset := builder.CreateByteVector(rm.Bytes())
+	offset := builder.CreateByteVector(bcopy)
 
 	msgflatbuf.MessageStart(builder)
 	msgflatbuf.MessageAddShard(builder, uint64(rm.Message.Shard()))
@@ -135,6 +137,8 @@ func (gw *grpcShardWriter) UpdateInstances(instances []placement.Instance, cws m
 		newActiveStreams[address] = sw
 
 		for _, shard := range instance.Shards().AllIDs() {
+			fmt.Printf("@tallen adding shard %d to instance %s\n", shard, address)
+			gw.shardMsgBrokers[shard] = newResourceBroker(gw.ctx)
 			gw.shardMsgBrokers[shard].Subscribe(msgChan)
 		}
 	}

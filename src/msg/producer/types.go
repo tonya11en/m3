@@ -21,7 +21,6 @@
 package producer
 
 import (
-	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/m3db/m3/src/cluster/services"
 )
 
@@ -44,8 +43,6 @@ type Message interface {
 
 	// Bytes returns the bytes of the message.
 	Bytes() []byte
-
-	Builder() *flatbuffers.Builder
 
 	// Size returns the size of the bytes of the message.
 	Size() int

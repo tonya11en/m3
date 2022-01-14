@@ -131,7 +131,9 @@ func (p *placement) NumInstances() int {
 }
 
 func (p *placement) Instance(id string) (Instance, bool) {
+	fmt.Printf("@tallen id=%s, INSTANCES: %+v\n", id, p.instances)
 	instance, ok := p.instances[id]
+	fmt.Printf("@tallen-wtf instance=%+v, ok=%v\n", instance, ok)
 	return instance, ok
 }
 

@@ -36,6 +36,8 @@ fi
 # TALLEN CUSTOM
 # ----------------------------------------------------------------------------------------------------
 
+echo @tallen agg1 hostname ${M3_AGG1_HOSTNAME}
+
 echo "@TALLEN THIS IS CUSTOM EDITS"
 export USE_AGGREGATOR=true
 export USE_AGGREGATOR_HA=false
@@ -51,7 +53,6 @@ echo @tallen starting the envoy
 echo ----------------------------------------------------------------------------------------------------
 #docker-compose --compatibility -f docker-compose.yml up --build $DOCKER_ARGS m3envoy
 docker-compose --compatibility -f docker-compose.yml up $DOCKER_ARGS m3envoy
-sleep 3
 
 # ----------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------

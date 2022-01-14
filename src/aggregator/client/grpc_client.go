@@ -396,10 +396,6 @@ func (m *flatbufMessage) Bytes() []byte {
 	return m.buf
 }
 
-func (m *flatbufMessage) Builder() *flatbuffers.Builder {
-	return m.builder
-}
-
 func (m *flatbufMessage) Size() int {
 	return len(m.buf)
 }

@@ -22,6 +22,7 @@ package aggregator
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/m3db/m3/src/cluster/placement"
@@ -252,6 +253,9 @@ func (mgr *placementManager) instanceWithLock() (placement.Instance, error) {
 
 func (mgr *placementManager) instanceFrom(placement placement.Placement) (placement.Instance, error) {
 	instance, found := placement.Instance(mgr.instanceID)
+	fmt.Printf("@tallen instanceFrom -- instance:%+v, found=%v\n", instance, found)
+	fmt.Printf("@tallen instanceFrom -- placement:%+v\n", placement)
+	fmt.Printf("@tallen instanceFrom -- mgr.instanceID:%+v\n", mgr.instanceID)
 	if !found {
 		mgr.metrics.instanceNotFound.Inc(1)
 		return nil, ErrInstanceNotFoundInPlacement

@@ -63,12 +63,8 @@ type messageProcessor struct {
 }
 
 func (m *messageProcessor) Process(msg consumer.Message) {
-	fmt.Printf("@tallen processing in agg/m3msg/srv: %+v\n", msg)
 	if err := m.handleMessage(&m.pb, &m.union, msg); err != nil {
-		m.logger.Error("could not process message",
-			zap.Error(err),
-			zap.Uint64("shard", msg.ShardID()))
-		fmt.Printf("@tallen uh-oh: %+v\n", msg)
+		m.logger.Error("could not process message", zap.Error(err))
 	}
 }
 
@@ -125,8 +121,6 @@ func (m *messageProcessor) handleMessage(
 			union.TimedMetricWithMetadata.Metric,
 			union.TimedMetricWithMetadata.TimedMetadata)
 	case metricpb.MetricWithMetadatas_TIMED_METRIC_WITH_METADATAS:
-		// @tallen - fuck
-		return nil
 		err := union.TimedMetricWithMetadatas.FromProto(pb.TimedMetricWithMetadatas)
 		if err != nil {
 			return err
@@ -135,7 +129,8 @@ func (m *messageProcessor) handleMessage(
 			union.TimedMetricWithMetadatas.Metric,
 			union.TimedMetricWithMetadatas.StagedMetadatas)
 	default:
-		return fmt.Errorf("unrecognized message type: %v", pb.Type)
+		fmt.Println("@tallen  ---- ", metricpb.MetricWithMetadatas_TIMED_METRIC_WITH_METADATAS, " ----- ", pb.Type == metricpb.MetricWithMetadatas_TIMED_METRIC_WITH_METADATAS)
+		return fmt.Errorf("unrecognized message type: %v, proto=%s", pb.Type, pb.String())
 	}
 }
 

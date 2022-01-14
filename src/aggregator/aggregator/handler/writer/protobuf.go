@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"math/rand"
 
-	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/m3db/m3/src/aggregator/sharding"
 	"github.com/m3db/m3/src/metrics/encoding/protobuf"
 	"github.com/m3db/m3/src/metrics/metric/aggregated"
@@ -168,10 +167,6 @@ func newMessage(shard uint32, sp policy.StoragePolicy, data protobuf.Buffer) pro
 
 func (d message) Shard() uint32 {
 	return d.shard
-}
-
-func (d message) Builder() *flatbuffers.Builder {
-	return nil
 }
 
 func (d message) Bytes() []byte {

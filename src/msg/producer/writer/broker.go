@@ -61,9 +61,12 @@ func (b *resourceBroker) Unsubscribe(msgCh ...chan *flatbuffers.Builder) {
 }
 
 func (b *resourceBroker) Select(msg *flatbuffers.Builder) {
-	idx := atomic.AddUint64(&b.counter, 1) % uint64(len(b.subs))
 	b.rwlock.RLock()
 	defer b.rwlock.RUnlock()
+	if len(b.subs) == 0 {
+		return
+	}
+	idx := atomic.AddUint64(&b.counter, 1) % uint64(len(b.subs))
 	b.subs[idx] <- msg
 }
 

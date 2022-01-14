@@ -23,6 +23,7 @@ package aggregator
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"strconv"
 	"sync"
@@ -429,9 +430,15 @@ func (agg *aggregator) shardFor(id id.RawID) (*aggregatorShard, error) {
 func (agg *aggregator) processPlacementWithLock(
 	newPlacement placement.Placement,
 ) error {
+	proto, err := newPlacement.Proto()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("@tallen processing placement %s\n", proto.String())
 	// If someone has already processed the placement ahead of us, or if the
 	// aggregator was closed before the placement update started, do nothing.
 	if !agg.shouldProcessPlacementWithLock(newPlacement) {
+		fmt.Printf("@tallen someone already processed placement\n")
 		return nil
 	}
 
@@ -444,7 +451,9 @@ func (agg *aggregator) processPlacementWithLock(
 	instance, err := agg.placementManager.InstanceFrom(newPlacement)
 	if err == nil {
 		newShardSet = instance.Shards()
+		fmt.Printf("@tallen creating new shard set: %+v\n", newShardSet)
 	} else if err == ErrInstanceNotFoundInPlacement {
+		fmt.Printf("@tallen instance not found in placement..\n")
 		// NB(r): Without this log message it's hard for operators to debug
 		// logs about receiving metrics that the aggregator does not own.
 		placementInstances := newPlacement.Instances()
@@ -460,10 +469,13 @@ func (agg *aggregator) processPlacementWithLock(
 			zap.Strings("placementInstanceIDs", placementInstanceIDs))
 
 		newShardSet = shard.NewShards(nil)
+		fmt.Printf("@tallen instance not found in placement.. newShardSet=%+v\n", newShardSet)
 	} else {
+		fmt.Printf("@tallen failed to process placement: %s\n", err.Error())
 		return err
 	}
 
+	fmt.Printf("@tallen updating shards\n")
 	agg.updateShardsWithLock(newPlacement, newShardSet)
 	if err := agg.updateShardSetIDWithLock(instance); err != nil {
 		return err
@@ -577,6 +589,7 @@ func (agg *aggregator) updateShardsWithLock(
 	newPlacement placement.Placement,
 	newShardSet shard.Shards,
 ) {
+	fmt.Printf("@tallen shard set: %+v\n", newShardSet)
 	var (
 		incoming []*aggregatorShard
 		closing  = make([]*aggregatorShard, 0, len(agg.shardIDs))
@@ -641,6 +654,7 @@ func (agg *aggregator) checkMetricType(mu unaggregated.MetricUnion) error {
 		agg.metrics.gauges.Inc(1)
 		return nil
 	default:
+		fmt.Println("@tallen ERROR - ", mu.Type.String())
 		return errInvalidMetricType
 	}
 }

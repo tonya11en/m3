@@ -20,11 +20,14 @@ table Message {
   // This will go unused for now...
   value:MessageValue;
 
-  // This is simply whatever would be in the m3msg buffer.
-  msg_value:[byte];
+  // Message metadata.
+  shard:ulong;
+  id:ulong;
+  sent_at_nanos:ulong;
+}
 
-  // We choose to embed the message metadata as flat fields in the message, rather than nesting
-  // another table into the buffer.
+table Ack {
+  // Message metadata.
   shard:ulong;
   id:ulong;
   sent_at_nanos:ulong;
@@ -195,14 +198,29 @@ table TimedMetadata {
 // The protobuf version of this Ack has a repeated metadata field. However, this flatbuffer gRPC
 // service id a bidirectional stream, so a single message may result in multiple streaming Acks.
 // This is done to simplify the creation of the message flatbuffer.
-table Ack {
-  shard:ulong;
-  id:ulong;
-  sent_at_nanos:ulong;
-}
 
 rpc_service MessageWriter {
   WriteMessage(Message):Ack (streaming: "bidi");
 }
  
 root_type Message;
+
+rpc_service Aggregator {
+  // blah blah
+  WriteUntimedCounter(WriteUntimedCounterRequest):WriteUntimedCounterReply;
+
+  // blah blah
+  WriteUntimedBatchTimer(WriteUntimedBatchTimerRequest):WriteUntimedBatchTimerReply;
+
+  // blah blah
+	WriteUntimedGauge(WriteUntimedGaugeRequest):WriteUntimedGaugeReply;
+
+  // blah blah
+	WriteTimed(WriteTimedRequest):WriteTimedReply;
+
+  // blah blah
+	WritePassthrough(WritePassthroughRequest):WritePassthroughReply;
+
+  // blah blah
+	WriteTimedWithStagedMetadatas(WriteTimedWithStagedMetadatasRequest):WriteTimedWithStagedMetadatasReply;
+}

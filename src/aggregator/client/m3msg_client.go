@@ -22,6 +22,7 @@ package client
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 
 	flatbuffers "github.com/google/flatbuffers/go"
@@ -36,6 +37,7 @@ import (
 	"github.com/m3db/m3/src/metrics/metric/id"
 	"github.com/m3db/m3/src/metrics/metric/unaggregated"
 	"github.com/m3db/m3/src/metrics/policy"
+	"github.com/m3db/m3/src/msg/generated/msgflatbuf"
 	"github.com/m3db/m3/src/msg/producer"
 	"github.com/m3db/m3/src/x/clock"
 	"github.com/m3db/m3/src/x/instrument"
@@ -312,6 +314,8 @@ type message struct {
 	tms    metricpb.TimedMetricWithMetadatas
 
 	buf []byte
+
+	builder *flatbuffers.Builder
 }
 
 func newMessage(pool *messagePool) *message {
@@ -327,6 +331,7 @@ func (m *message) Encode(
 	payload payloadUnion,
 ) error {
 	m.shard = shard
+	m.builder = msgflatbuf.GetBuilder()
 
 	switch payload.payloadType {
 	case untimedType:
@@ -428,6 +433,12 @@ func (m *message) Encode(
 	m.buf = m.buf[:size]
 
 	_, err := m.metric.MarshalTo(m.buf)
+
+	// @tallen RIP THIS OUT AFTER DEBUGGING
+	if m.metric.Type != metricpb.MetricWithMetadatas_TIMED_METRIC_WITH_METADATAS {
+		panic(fmt.Sprintf("@tallen wtf rip this out when finished debugging - %+v\n", m.metric.String()))
+	}
+
 	return err
 }
 
@@ -440,7 +451,7 @@ func (m *message) Bytes() []byte {
 }
 
 func (m *message) Builder() *flatbuffers.Builder {
-	return nil
+	return m.builder
 }
 
 func (m *message) Size() int {
@@ -450,4 +461,8 @@ func (m *message) Size() int {
 func (m *message) Finalize(reason producer.FinalizeReason) {
 	// Return to pool.
 	m.pool.Put(m)
+	runtime.SetFinalizer(m.builder, func(b *flatbuffers.Builder) {
+		msgflatbuf.ReturnBuilder(b)
+	})
+	m.builder = msgflatbuf.GetBuilder()
 }

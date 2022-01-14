@@ -59,7 +59,6 @@ func newGRPCStreamWriter(ctx context.Context, addr string, msgChan <-chan *flatb
 		ackChan: ackChan,
 	}
 
-	fmt.Println("@tallen done making grpc client:", addr)
 	// TODO more
 
 	return &gclient, nil
@@ -72,7 +71,6 @@ func (w *grpcStreamWriter) Init() {
 }
 
 func (w *grpcStreamWriter) initClient() {
-	fmt.Println("@tallen making grpc client. dialing", " - ", w.address)
 	dopts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithCodec(flatbuffers.FlatbuffersCodec{}),
@@ -89,8 +87,6 @@ func (w *grpcStreamWriter) initClient() {
 	}
 	w.conn = conn
 
-	fmt.Println("@tallen done dialing. making new grpc client", " - ", w.address)
-
 	mrc := msgflatbuf.NewMessageWriterClient(conn)
 	w.client = mrc
 }
@@ -106,10 +102,7 @@ func (w *grpcStreamWriter) connectLoop() {
 
 		err := w.startStream(w.ctx)
 		if err != nil {
-			fmt.Printf("@tallen error encountered during stream: %s\n", err.Error())
-			fmt.Println("@tallen retrying stream establishment...", " - ", w.address)
 			for currentState := w.conn.GetState(); currentState != connectivity.Ready; currentState = w.conn.GetState() {
-				fmt.Println("@tallen waiting for grpc conn state change from ", currentState.String(), " - ", w.address)
 				w.conn.WaitForStateChange(w.ctx, currentState)
 			}
 		}
@@ -123,9 +116,8 @@ func (w *grpcStreamWriter) receiveAcks(
 
 	defer stream.CloseSend()
 
-	defer fmt.Println("@tallen exiting receiveAcks")
-
 	for {
+		fmt.Println("receiving acks...")
 		select {
 		case <-stream.Context().Done():
 			return
@@ -140,7 +132,6 @@ func (w *grpcStreamWriter) receiveAcks(
 			return
 		}
 		if err != nil {
-			fmt.Printf("@tallen error received from stream: %s\n", err.Error())
 			errChan <- err
 			return
 		}
@@ -159,12 +150,8 @@ func (w *grpcStreamWriter) startStream(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	fmt.Printf("@tallen establishing message writer stream for %s\n", w.address)
-	defer fmt.Printf("@tallen stream terminated for %s\n", w.address)
-
 	stream, err := w.client.WriteMessage(ctx)
 	if err != nil {
-		fmt.Printf("@tallen error creating stream: %s\n", err.Error())
 		return err
 	}
 	defer stream.CloseSend()
@@ -173,24 +160,19 @@ func (w *grpcStreamWriter) startStream(ctx context.Context) error {
 	go w.receiveAcks(ctx, stream, recvErrChan)
 
 	for {
-		fmt.Println("@tallen starting stream writer loop")
 		select {
 		case <-stream.Context().Done():
-			fmt.Println("@tallen stream context cancelled")
 			return nil
 
 		case err := <-recvErrChan:
 			return err
 
 		case b := <-w.msgChan:
-			fmt.Println("@tallen received msg on channel to send")
 			b.FinishedBytes() // @tallen
 			err := stream.Send(b)
 			if err != nil {
-				fmt.Println("@tallen stream send failed")
 				return err
 			}
-			msgflatbuf.ReturnBuilder(b)
 		}
 	}
 }
